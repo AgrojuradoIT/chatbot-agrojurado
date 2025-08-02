@@ -2,14 +2,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from database import engine, Base
-from models.whatsapp_models import WhatsappUser
+from models.whatsapp_models import WhatsappUser, Template
 
 def init_db():
-    print("Eliminando y recreando la tabla de usuarios de WhatsApp...")
-    # Esto eliminará la tabla existente y todos sus datos
-    WhatsappUser.__table__.drop(engine, checkfirst=True)
+    print("Eliminando y recreando las tablas de la base de datos...")
+    # Esto eliminará las tablas existentes y todos sus datos
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    print("¡Tabla recreada con el nuevo esquema!")
+    print("¡Tablas recreadas con el nuevo esquema!")
 
 if __name__ == "__main__":
     init_db()

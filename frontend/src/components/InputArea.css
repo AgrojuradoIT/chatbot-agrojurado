@@ -1,0 +1,99 @@
+.input-area {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #374045;
+  background-color: #202c33;
+  align-items: flex-end;
+}
+
+.input-area textarea {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  resize: none;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  min-height: 20px;
+  max-height: 100px;
+  background-color: #2a3942;
+  transition: all 0.2s ease;
+  color: #e9edef;
+}
+
+.input-area textarea:focus {
+  outline: none;
+  border: none;
+  background-color: #2a3942;
+  box-shadow: none;
+  color: #e9edef;
+}
+
+.input-area textarea::placeholder {
+  color: #8696a0;
+}
+
+.input-area button {
+  padding: 8px 12px;
+  background-color: #00a884;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 60px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-area button:hover:not(:disabled) {
+  background-color: #008f72;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 168, 132, 0.3);
+}
+
+.input-area button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.input-area button:disabled {
+  background-color: #374045;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design - Simple */
+@media (max-width: 768px) {
+  .input-area {
+    padding: 6px 10px;
+  }
+  
+  .input-area textarea {
+    font-size: 13px;
+  }
+  
+  .input-area button {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-area {
+    padding: 4px 8px;
+  }
+  
+  .input-area textarea {
+    font-size: 12px;
+  }
+  
+  .input-area button {
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,69 @@
+.message-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #8696a0;
+  margin-top: 2px;
+}
+
+.status-icon {
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+}
+
+.status-icon.sending {
+  color: #8696a0;
+  animation: pulse 1.5s infinite;
+}
+
+.status-icon.sent {
+  color: #8696a0;
+}
+
+.status-icon.delivered {
+  color: #53bdeb;
+}
+
+.status-icon.error {
+  color: #f15c6d;
+}
+
+.status-text {
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.message-time {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Para mensajes de usuario */
+.user-message .message-status {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+/* Para mensajes del bot */
+.bot-message .message-status {
+  justify-content: flex-start;
+  margin-right: auto;
+} 

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from sqlalchemy import Column, String, DateTime, Boolean, func
 from database import Base
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 class ChangeValue(BaseModel):
     messaging_product: str
@@ -31,3 +31,62 @@ class WhatsappUser(Base):
     last_interaction = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
     inactivity_warning_sent = Column(Boolean, default=False)
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(String(100), primary_key=True, index=True)
+    phone_number = Column(String(50), index=True)
+    sender = Column(String(10))  # 'user' or 'bot'
+    content = Column(String(1000))
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String(20), default='sent')  # 'sending', 'sent', 'delivered', 'error'
+
+class TemplateRequest(BaseModel):
+    name: str
+    content: str
+    category: str
+    language: str = "es"
+    footer: str = None
+
+class TemplateResponse(BaseModel):
+    id: str
+    name: str
+    status: str
+    category: str
+    language: str
+    created_at: str
+    rejected_reason: Optional[str] = None
+
+class SendTemplateRequest(BaseModel):
+    template_name: str
+    phone_numbers: List[str]
+    parameters: Optional[Dict[str, Any]] = None
+
+class ContactCreateRequest(BaseModel):
+    phone_number: str
+    name: str
+    is_active: bool = True
+
+class ContactUpdateRequest(BaseModel):
+    name: str
+    is_active: bool = True
+
+class ContactResponse(BaseModel):
+    phone_number: str
+    name: str
+    last_interaction: str
+    is_active: bool
+
+class Template(Base):
+    __tablename__ = "templates"
+
+    id = Column(String(100), primary_key=True, index=True)
+    name = Column(String(255), nullable=False, unique=True)
+    content = Column(String(1000), nullable=False)
+    category = Column(String(50)) # 'UTILITY' | 'MARKETING' | 'TRANSACTIONAL' | 'OTP'
+    status = Column(String(50)) # 'APPROVED' | 'PENDING' | 'REJECTED' | 'DRAFT'
+    rejected_reason = Column(String(1000), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    footer = Column(String(500), nullable=True)
+    is_archived = Column(Boolean, default=False)

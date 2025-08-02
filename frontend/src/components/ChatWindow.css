@@ -1,0 +1,184 @@
+.chat-window {
+  flex: 1;
+  min-height: 300px;
+  max-height: 600px;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #0b141a;
+  box-shadow: none;
+  position: relative;
+}
+
+.chat-header {
+  background-color: #202c33;
+  border-bottom: 1px solid #374045;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 60px;
+}
+
+.chat-contact-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a884 0%, #008f72 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.3);
+}
+
+.contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contact-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #e9edef;
+  line-height: 1.2;
+}
+
+.contact-phone {
+  font-size: 13px;
+  color: #8696a0;
+  line-height: 1.2;
+}
+
+.messages-container {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: transparent;
+}
+
+.message {
+  max-width: 65%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+  word-wrap: break-word;
+  margin-bottom: 2px;
+}
+
+.user-message {
+  align-self: flex-end;
+  background-color: #005c4b;
+  color: #e9edef;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bot-message {
+  align-self: flex-start;
+  background-color: #202c33;
+  color: #e9edef;
+  border-bottom-left-radius: 4px;
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.message-content {
+  margin-bottom: 2px;
+  font-weight: 400;
+}
+
+.message-timestamp {
+  font-size: 11px;
+  opacity: 0.7;
+  text-align: right;
+  margin-top: 2px;
+}
+
+.user-message .message-timestamp {
+  color: #8696a0;
+}
+
+.bot-message .message-timestamp {
+  color: #8696a0;
+}
+
+/* Scrollbar personalizado estilo WhatsApp */
+.messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: #0b141a;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: #374045;
+  border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: #4a5a63;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  color: #8696a0;
+  font-size: 0.9em;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #374045;
+  border-top: 2px solid #00a884;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design - Simple */
+@media (max-width: 768px) {
+  .messages-container {
+    padding: 12px;
+  }
+  
+  .message {
+    max-width: 75%;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .messages-container {
+    padding: 8px;
+  }
+  
+  .message {
+    max-width: 80%;
+    font-size: 11px;
+  }
+}
