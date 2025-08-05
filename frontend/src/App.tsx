@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import ChatWindow from './components/ChatWindow';
 import InputArea from './components/InputArea';
-import ContactsPanel from './components/ContactsPanel';
+import ChatPanel from './components/ChatPanel';
 import TemplatePanel from './components/TemplatePanel';
 import ContactManager from './components/ContactManager';
+import StatisticsDashboard from './components/StatisticsDashboard';
 import { messageService } from './services/messageService';
-import type { PaginationInfo } from './services/messageService';
 import { websocketService } from './services/websocketService';
+import { ContactProvider } from './contexts/ContactContext';
 
 interface Message {
   id: string;
@@ -31,22 +32,14 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [showContactManager, setShowContactManager] = useState(false);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    page: 1,
-    limit: 50,
-    total: 0,
-    total_pages: 0,
-    has_next: false,
-    has_prev: false
-  });
+  const [activeTab, setActiveTab] = useState<'chat' | 'templates' | 'contacts' | 'statistics'>('chat');
+
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [allMessages, setAllMessages] = useState<Message[]>([]);
+
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
-  const [refreshChatsTrigger, setRefreshChatsTrigger] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
+
+
   
   // Cache de mensajes por contacto
   const [messageCache, setMessageCache] = useState<Record<string, {
@@ -112,9 +105,6 @@ function App() {
             : msg
         ));
         console.log('✅ Mensaje enviado exitosamente:', messageId);
-        
-        // Actualizar lista de chats para mostrar el nuevo chat
-        setRefreshChatsTrigger(prev => prev + 1);
       }
       // Si es exitoso, el WebSocket se encargará de mostrar el mensaje confirmado
     } catch (error) {
@@ -142,18 +132,7 @@ function App() {
     return messageCache[phoneNumber];
   };
 
-  const clearCache = (phoneNumber?: string) => {
-    if (phoneNumber) {
-      setMessageCache(prev => {
-        const { [phoneNumber]: removed, ...rest } = prev;
-        return rest;
-      });
-      console.log('🗑️ Cache limpiado para:', phoneNumber);
-    } else {
-      setMessageCache({});
-      console.log('🗑️ Cache completamente limpiado');
-    }
-  };
+
 
   const scrollToBottom = () => {
     const container = document.querySelector('.infinite-scroll-container');
@@ -211,7 +190,7 @@ function App() {
   const handleSelectChat = async (chat: Chat) => {
     console.log('👤 Chat seleccionado:', chat.name, chat.phone);
     setSelectedChat(chat);
-    setIsConnecting(true);
+    
     
     // Conectar al WebSocket general si no está conectado
     websocketService.connect();
@@ -236,8 +215,7 @@ function App() {
         setCachedMessages(chat.phone, uniqueCachedMessages, cached.hasMore);
       }
       
-      setMessages(uniqueCachedMessages);
-      setAllMessages(uniqueCachedMessages);
+              setMessages(uniqueCachedMessages);
       setHasMoreOlder(cached.hasMore);
       
       // Hacer scroll al final después de cargar desde cache
@@ -252,7 +230,7 @@ function App() {
     
     // Configurar callback para nuevos mensajes
     websocketService.onMessage((data) => {
-      if (data.type === 'new_message') {
+      if (data.type === 'new_message' && data.message) {
         console.log('📨 Nuevo mensaje recibido:', data.message.text.substring(0, 50) + '...');
         const newMessage: Message = {
           id: data.message.id,
@@ -296,20 +274,7 @@ function App() {
           return updatedMessages;
         });
         
-        setAllMessages(prev => {
-          // Evitar duplicados
-          if (prev.some(msg => msg.id === newMessage.id)) {
-            return prev;
-          }
-          const updatedMessages = [...prev, newMessage];
-          
-          // Actualizar cache
-          if (selectedChat) {
-            setCachedMessages(selectedChat.phone, updatedMessages, hasMoreOlder);
-          }
-          
-          return updatedMessages;
-        });
+
       }
     });
     
@@ -336,7 +301,6 @@ function App() {
       );
       
       setMessages(uniqueMessages);
-      setAllMessages(uniqueMessages);
       
       // Verificar si hay más mensajes antiguos disponibles
       const hasMore = uniqueMessages.length >= 50; // Si hay 50+ mensajes, probablemente hay más
@@ -349,20 +313,11 @@ function App() {
       if (uniqueMessages.length === 0) {
         console.log('📝 No hay mensajes, mostrando chat vacío');
         setMessages([]);
-        setAllMessages([]);
         setHasMoreOlder(false);
         setCachedMessages(chat.phone, [], false);
       }
       
-      // Configurar paginación básica para mensajes recientes
-      setPagination({
-        page: 1,
-        limit: 50,
-        total: uniqueMessages.length,
-        total_pages: 1,
-        has_next: hasMore,
-        has_prev: false
-      });
+
       
       // Hacer scroll al final después de cargar del servidor (solo si no estamos cerca del inicio)
       if (!isNearTop()) {
@@ -377,10 +332,9 @@ function App() {
         timestamp: new Date(),
       };
       setMessages([errorMessage]);
-      setAllMessages([errorMessage]);
     } finally {
       setIsLoadingMessages(false);
-      setIsConnecting(false);
+
     }
   };
 
@@ -419,8 +373,8 @@ function App() {
     // Seleccionar el chat
     handleSelectChat(chat);
     
-    // Cerrar el panel de gestión de contactos
-    setShowContactManager(false);
+    // Cambiar a la pestaña de chat
+    setActiveTab('chat');
   };
 
   const handleLoadMore = async () => {
@@ -470,7 +424,6 @@ function App() {
       
       console.log(`📚 Agregando ${newMessages.length} mensajes nuevos de ${formattedMessages.length} cargados`);
       
-      setAllMessages(updatedMessages);
       setMessages(updatedMessages);
       setHasMoreOlder(response.hasMore);
       
@@ -490,64 +443,88 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Chatbot Agrojurado</h1>
-        <div className="header-actions">
-          <button
-            className="templates-btn"
-            onClick={() => {
-              setShowTemplates(!showTemplates);
-              setShowContactManager(false);
-            }}
-          >
-            {showTemplates ? 'Ocultar Plantillas' : 'Ver Plantillas'}
-          </button>
-          <button
-            className="contacts-btn"
-            onClick={() => {
-              setShowContactManager(!showContactManager);
-              setShowTemplates(false);
-            }}
-          >
-            {showContactManager ? 'Ocultar Contactos' : 'Gestionar Contactos'}
-          </button>
+    <ContactProvider>
+      <div className="App">
+        <div className="tab-navigation">
+          <div className="app-title">
+            <h1>Chatbot Agrojurado</h1>
+          </div>
+          <div className="tab-buttons">
+            <button 
+              className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chat')}
+            >
+              CHAT
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+              onClick={() => setActiveTab('templates')}
+            >
+              PLANTILLAS
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contacts')}
+            >
+              CONTACTOS
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('statistics')}
+            >
+              ESTADÍSTICAS
+            </button>
+          </div>
         </div>
-      </header>
-      <div className="App-content">
-        <ContactsPanel
-          selectedChat={selectedChat}
-          onSelectChat={handleSelectChat}
-          selectedChats={selectedChats}
-          onToggleSelection={handleToggleChatSelection}
-          multiSelect={false}
-          refreshTrigger={refreshChatsTrigger}
-        />
-        <div className="chat-section">
-          <ChatWindow 
-            messages={messages} 
-            isLoading={isLoadingMessages}
-            onLoadMore={handleLoadMore}
-            hasMore={hasMoreOlder}
-            isLoadingMore={isLoadingMore}
-            selectedChat={selectedChat}
-          />
-
-          <InputArea onSendMessage={handleSendMessage} />
+        <div className="App-content">
+          {/* Panel de chats siempre visible excepto en estadísticas */}
+          {activeTab !== 'statistics' && (
+            <ChatPanel
+              selectedChat={selectedChat}
+              onSelectChat={handleSelectChat}
+              selectedChats={selectedChats}
+              onToggleSelection={handleToggleChatSelection}
+              multiSelect={false}
+            />
+          )}
+          
+          {/* Chat y área de entrada siempre visible excepto en estadísticas */}
+          {activeTab !== 'statistics' && (
+            <div className="chat-section">
+              <ChatWindow 
+                messages={messages} 
+                isLoading={isLoadingMessages}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMoreOlder}
+                isLoadingMore={isLoadingMore}
+                selectedChat={selectedChat}
+              />
+              <InputArea onSendMessage={handleSendMessage} />
+            </div>
+          )}
+          
+          {/* Paneles adicionales según la pestaña activa */}
+          {activeTab === 'templates' && (
+            <TemplatePanel
+              onSendTemplate={handleSendTemplate}
+            />
+          )}
+          
+          {activeTab === 'contacts' && (
+            <ContactManager
+              onContactUpdate={handleContactUpdate}
+              onSelectChat={handleSelectContactFromManager}
+            />
+          )}
+          
+          {activeTab === 'statistics' && (
+            <StatisticsDashboard
+              isVisible={true}
+            />
+          )}
         </div>
-        {showTemplates && (
-          <TemplatePanel
-            onSendTemplate={handleSendTemplate}
-          />
-        )}
-        {showContactManager && (
-          <ContactManager
-            onContactUpdate={handleContactUpdate}
-            onSelectChat={handleSelectContactFromManager}
-          />
-        )}
       </div>
-    </div>
+    </ContactProvider>
   );
 }
 

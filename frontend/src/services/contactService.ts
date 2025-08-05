@@ -55,6 +55,28 @@ class ContactService {
     }
   }
 
+  async createContactsBulk(contacts: ContactCreateRequest[]): Promise<{message: string, results: {created: number, skipped: number, errors: string[], duplicates: string[]}}> {
+    try {
+      const response = await fetch(`${this.baseUrl}/contacts/bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contacts),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al importar contactos');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating contacts bulk:', error);
+      throw error;
+    }
+  }
+
   async updateContact(phoneNumber: string, contact: ContactUpdateRequest): Promise<Contact> {
     try {
       const response = await fetch(`${this.baseUrl}/contacts/${phoneNumber}`, {

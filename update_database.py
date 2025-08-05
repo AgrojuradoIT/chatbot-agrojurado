@@ -13,21 +13,51 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-# Configuración de la base de datos
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_NAME = os.getenv("DB_NAME", "agrojura")
-DB_PORT = os.getenv("DB_PORT", "3306")
+# Verificar variables de entorno requeridas
+required_env_vars = ["DB_HOST", "DB_USER", "DB_NAME"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
 
-# URL de conexión
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if missing_vars:
+    print(f"❌ Error: Variables de entorno faltantes: {', '.join(missing_vars)}")
+    print("Por favor, configura estas variables en tu archivo .env:")
+    print("   DB_HOST=localhost")
+    print("   DB_USER=root")
+    print("   DB_NAME=agrojura")
+    print("   DB_PASSWORD= (puede estar vacío para desarrollo local)")
+    print("   DB_PORT=3306 (opcional, por defecto 3306)")
+    sys.exit(1)
+
+# Configuración de la base de datos
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+DB_PORT = os.getenv("DB_PORT", "3306")  # Puerto por defecto es útil mantener
+
+# URL de conexión (maneja contraseña vacía para desarrollo local)
+if DB_PASSWORD:
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+def check_dependencies():
+    """Verifica que las dependencias necesarias estén instaladas"""
+    try:
+        import pymysql
+        print("✅ PyMySQL está instalado")
+    except ImportError:
+        print("❌ Error: PyMySQL no está instalado")
+        print("Instala con: pip install pymysql")
+        sys.exit(1)
 
 def create_database_if_not_exists():
     """Crea la base de datos si no existe"""
     try:
-        # Conectar sin especificar base de datos
-        engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}")
+        # Conectar sin especificar base de datos (maneja contraseña vacía)
+        if DB_PASSWORD:
+            engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}")
+        else:
+            engine = create_engine(f"mysql+pymysql://{DB_USER}@{DB_HOST}:{DB_PORT}")
         
         with engine.connect() as conn:
             # Crear base de datos si no existe
@@ -37,6 +67,10 @@ def create_database_if_not_exists():
             
     except SQLAlchemyError as e:
         print(f"❌ Error al crear la base de datos: {e}")
+        print("💡 Sugerencias:")
+        print("   - Verifica que MySQL esté ejecutándose")
+        print("   - Verifica que el usuario tenga permisos")
+        print("   - Para desarrollo local, puedes usar contraseña vacía")
         sys.exit(1)
 
 def check_table_exists(engine, table_name):
@@ -49,6 +83,30 @@ def get_table_columns(engine, table_name):
     inspector = inspect(engine)
     columns = inspector.get_columns(table_name)
     return {col['name']: col['type'] for col in columns}
+
+def create_indexes(engine, table_name):
+    """Crea índices adicionales para mejorar el rendimiento"""
+    try:
+        with engine.connect() as conn:
+            if table_name == "messages":
+                # Índices para búsquedas por sender y status
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_sender ON {table_name} (sender);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_status ON {table_name} (status);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_phone_sender ON {table_name} (phone_number, sender);"))
+            elif table_name == "templates":
+                # Índices para búsquedas por categoría y estado
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_category ON {table_name} (category);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_status ON {table_name} (status);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_archived ON {table_name} (is_archived);"))
+            elif table_name == "whatsapp_users":
+                # Índices para búsquedas por estado activo
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_active ON {table_name} (is_active);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_last_interaction ON {table_name} (last_interaction);"))
+            
+            conn.commit()
+            print(f"✅ Índices adicionales creados para '{table_name}'")
+    except SQLAlchemyError as e:
+        print(f"⚠️ Advertencia: No se pudieron crear algunos índices para '{table_name}': {e}")
 
 def create_whatsapp_users_table(engine):
     """Crea o actualiza la tabla whatsapp_users"""
@@ -70,6 +128,9 @@ def create_whatsapp_users_table(engine):
             conn.execute(text(create_table_sql))
             conn.commit()
         print(f"✅ Tabla '{table_name}' creada exitosamente")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
     else:
         # Verificar columnas existentes
         existing_columns = get_table_columns(engine, table_name)
@@ -102,6 +163,9 @@ def create_whatsapp_users_table(engine):
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
         else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
 
 def create_messages_table(engine):
     """Crea o actualiza la tabla messages"""
@@ -126,6 +190,9 @@ def create_messages_table(engine):
             conn.execute(text(create_table_sql))
             conn.commit()
         print(f"✅ Tabla '{table_name}' creada exitosamente")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
     else:
         # Verificar columnas existentes
         existing_columns = get_table_columns(engine, table_name)
@@ -157,6 +224,9 @@ def create_messages_table(engine):
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
         else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
 
 def create_templates_table(engine):
     """Crea o actualiza la tabla templates"""
@@ -182,6 +252,9 @@ def create_templates_table(engine):
             conn.execute(text(create_table_sql))
             conn.commit()
         print(f"✅ Tabla '{table_name}' creada exitosamente")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
     else:
         # Verificar columnas existentes
         existing_columns = get_table_columns(engine, table_name)
@@ -216,6 +289,9 @@ def create_templates_table(engine):
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
         else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
 
 def main():
     """Función principal del script"""
@@ -223,9 +299,13 @@ def main():
     print(f"📊 Base de datos: {DB_NAME}")
     print(f"🌐 Host: {DB_HOST}:{DB_PORT}")
     print(f"👤 Usuario: {DB_USER}")
+    print(f"🔐 Contraseña: {'Configurada' if DB_PASSWORD else 'Vacía (desarrollo local)'}")
     print("-" * 50)
     
     try:
+        # Verificar dependencias
+        check_dependencies()
+        
         # Crear base de datos si no existe
         create_database_if_not_exists()
         
@@ -245,10 +325,12 @@ def main():
         print("-" * 50)
         print("🎉 ¡Actualización de la base de datos completada exitosamente!")
         print("📋 Resumen:")
+        print("   ✅ Dependencias verificadas")
         print("   ✅ Base de datos verificada/creada")
         print("   ✅ Tabla 'whatsapp_users' verificada/creada")
         print("   ✅ Tabla 'messages' verificada/creada")
         print("   ✅ Tabla 'templates' verificada/creada")
+        print("   ✅ Índices adicionales creados")
         
     except SQLAlchemyError as e:
         print(f"❌ Error durante la actualización: {e}")

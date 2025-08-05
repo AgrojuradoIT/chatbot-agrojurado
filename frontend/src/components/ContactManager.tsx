@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { contactService } from '../services/contactService';
-import type { Contact, ContactCreateRequest, ContactUpdateRequest } from '../services/contactService';
+import type { Contact, ContactCreateRequest } from '../services/contactService';
+import ContactImport from './ContactImport';
+import './ContactImport.css';
+import { useContacts } from '../contexts/ContactContext';
 
 
 interface ContactManagerProps {
@@ -12,35 +15,16 @@ const ContactManager: React.FC<ContactManagerProps> = ({
   onContactUpdate,
   onSelectChat
 }) => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { contacts, loading, error } = useContacts();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [newContact, setNewContact] = useState<ContactCreateRequest>({
     phone_number: '',
     name: '',
     is_active: true
   });
-
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
-  const fetchContacts = async () => {
-    try {
-      setLoading(true);
-      const contactsData = await contactService.getContacts();
-      setContacts(contactsData);
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar contactos');
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateContact = async () => {
     if (!newContact.phone_number || !newContact.name) {
@@ -55,7 +39,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       });
       setNewContact({ phone_number: '', name: '', is_active: true });
       setShowCreateModal(false);
-      await fetchContacts();
+      // No recargar aquí, el contexto se encargará de actualizar
       onContactUpdate?.();
       alert('Contacto creado exitosamente');
     } catch (err: any) {
@@ -73,7 +57,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       });
       setShowEditModal(false);
       setEditingContact(null);
-      await fetchContacts();
+      // No recargar aquí, el WebSocket se encargará de actualizar
       onContactUpdate?.();
       alert('Contacto actualizado exitosamente');
     } catch (err: any) {
@@ -88,7 +72,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
 
     try {
       await contactService.deleteContact(phoneNumber);
-      await fetchContacts();
+      // No recargar aquí, el WebSocket se encargará de actualizar
       onContactUpdate?.();
       alert('Contacto eliminado exitosamente');
     } catch (err: any) {
@@ -121,15 +105,26 @@ const ContactManager: React.FC<ContactManagerProps> = ({
   };
 
   return (
-    <div className="contacts-panel">
+    <div className="contact-manager-panel">
       <div className="contacts-header">
-        <h3>Gestionar Contactos</h3>
-        <button 
-          className="create-contact-btn"
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Agregar
-        </button>
+        <h3>Contactos</h3>
+        <div className="contacts-actions">
+          <button 
+            className="import-contact-btn"
+            onClick={() => setShowImportModal(true)}
+            title="Importar contactos desde Excel"
+          >
+            <span className="material-icons">upload_file</span>
+            Importar
+          </button>
+          <button 
+            className="create-contact-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <span className="material-icons">add</span>
+            Agregar
+          </button>
+        </div>
       </div>
 
       {loading && <div className="loading">Cargando contactos...</div>}
@@ -150,7 +145,17 @@ const ContactManager: React.FC<ContactManagerProps> = ({
               <div className="contact-name">{contact.name}</div>
               <div className="contact-phone">{formatPhoneNumber(contact.phone_number)}</div>
               <div className="contact-last-message">
-                {contact.is_active ? '✅ Activo' : '❌ Inactivo'} • Última interacción: {formatDate(contact.last_interaction)}
+                {contact.is_active ? (
+                  <>
+                    <span className="material-icons">check_circle</span>
+                    Activo
+                  </>
+                ) : (
+                  <>
+                    <span className="material-icons">cancel</span>
+                    Inactivo
+                  </>
+                )} • Última interacción: {formatDate(contact.last_interaction)}
               </div>
             </div>
             <div className="contact-actions" onClick={(e) => e.stopPropagation()}>
@@ -159,14 +164,14 @@ const ContactManager: React.FC<ContactManagerProps> = ({
                 onClick={() => openEditModal(contact)}
                 title="Editar contacto"
               >
-                ✏️
+                <span className="material-icons">edit</span>
               </button>
               <button 
                 className="delete-btn"
                 onClick={() => handleDeleteContact(contact.phone_number)}
                 title="Eliminar contacto"
               >
-                🗑️
+                <span className="material-icons">delete</span>
               </button>
             </div>
           </div>
@@ -250,6 +255,17 @@ const ContactManager: React.FC<ContactManagerProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal para importar contactos */}
+      {showImportModal && (
+        <ContactImport
+          onImportComplete={() => {
+            // No recargar aquí, el contexto se encargará de actualizar
+            onContactUpdate?.();
+          }}
+          onClose={() => setShowImportModal(false)}
+        />
       )}
     </div>
   );

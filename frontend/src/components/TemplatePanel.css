@@ -34,12 +34,12 @@
   border-bottom: 1px solid #374045;
 }
 
-.tab-btn {
+.template-tabs .tab-btn {
   background: none;
   border: none;
   color: #8696a0;
   padding: 3px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -49,24 +49,25 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   outline: none;
+  flex: 0 1 auto;
 }
 
-.tab-btn:focus {
+.template-tabs .tab-btn:focus {
   outline: none;
 }
 
-.tab-btn:hover {
+.template-tabs .tab-btn:hover {
   color: #e9edef;
   opacity: 0.6;
 }
 
-.tab-btn.active {
+.template-tabs .tab-btn.active {
   color: #00a884;
   opacity: 1;
   font-weight: 500;
 }
 
-.tab-btn.active:hover {
+.template-tabs .tab-btn.active:hover {
   color: #00a884;
   opacity: 1;
 }
@@ -148,9 +149,9 @@
 }
 
 .create-template-btn, .create-contact-btn {
-  background: linear-gradient(135deg, #00a884 0%, #008f72 100%);
-  border: none;
-  color: white;
+  background: none;
+  border: 1px solid #00a884;
+  color: #00a884;
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 12px;
@@ -167,11 +168,19 @@
 
 .create-template-btn:focus, .create-contact-btn:focus {
   outline: none;
+  box-shadow: none;
+}
+
+.create-template-btn:active, .create-contact-btn:active {
+  outline: none;
+  box-shadow: none;
+  transform: none;
 }
 
 .create-template-btn:hover, .create-contact-btn:hover {
-  background: linear-gradient(135deg, #008f72 0%, #007a5f 100%);
-  transform: translateY(-1px);
+  background-color: rgba(0, 168, 132, 0.1);
+  color: #00a884;
+  transform: none;
 }
 
 .template-list {
@@ -508,9 +517,9 @@
     padding: 0 12px;
   }
   
-  .tab-btn {
+  .template-tabs .tab-btn {
     padding: 10px 12px;
-    font-size: 12px;
+    font-size: 13px;
     min-width: 70px;
   }
   
@@ -996,4 +1005,41 @@
 .delete-btn:hover {
   background-color: rgba(220, 53, 69, 0.1);
   color: #dc3545;
+}
+
+/* Estilos para los iconos de Material Icons */
+.material-icons {
+  font-size: 16px;
+  margin-right: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.create-template-btn .material-icons,
+.create-contact-btn .material-icons,
+.import-contact-btn .material-icons {
+  font-size: 14px;
+  margin-right: 4px;
+  color: inherit;
+}
+
+/* Estilos para iconos en estados de plantillas */
+.template-status .material-icons {
+  font-size: 14px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Estilos para iconos en estados de contactos */
+.contact-status .material-icons {
+  font-size: 12px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+/* Estilos para iconos en headers */
+.section-header h5 .material-icons {
+  font-size: 16px;
+  margin-right: 6px;
+  vertical-align: middle;
 }

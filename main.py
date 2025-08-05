@@ -645,6 +645,15 @@ async def create_contact(contact_request: ContactCreateRequest, db: Session = De
         db.commit()
         db.refresh(new_contact)
         
+        # Notificar a todos los clientes conectados sobre la actualización de contactos
+        await manager.send_message_to_all({
+            "type": "contact_updated",
+            "data": {
+                "action": "created",
+                "contact_phone": new_contact.phone_number
+            }
+        })
+        
         return {
             "message": "Contact created successfully",
             "contact": {
@@ -659,6 +668,88 @@ async def create_contact(contact_request: ContactCreateRequest, db: Session = De
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating contact: {e}")
+
+@app.post("/api/contacts/bulk", status_code=201)
+async def create_contacts_bulk(contacts_request: List[ContactCreateRequest], db: Session = Depends(get_db)):
+    """Crear múltiples contactos de manera eficiente"""
+    try:
+        results = {
+            "created": 0,
+            "skipped": 0,
+            "errors": [],
+            "duplicates": []
+        }
+        
+        print(f"📊 Procesando {len(contacts_request)} contactos para importación")
+        
+        # Obtener números de teléfono existentes para evitar duplicados
+        existing_phones = set()
+        existing_contacts = db.query(WhatsappUser.phone_number).all()
+        existing_phones.update([contact.phone_number for contact in existing_contacts])
+        
+        print(f"📋 Números existentes en BD: {len(existing_phones)}")
+        if existing_phones:
+            print(f"📱 Ejemplos de números existentes: {list(existing_phones)[:5]}")
+        
+        # Preparar contactos para inserción
+        contacts_to_create = []
+        for i, contact_request in enumerate(contacts_request):
+            try:
+                print(f"🔍 Procesando fila {i + 1}: {contact_request.phone_number} - {contact_request.name}")
+                
+                # Verificar si ya existe
+                if contact_request.phone_number in existing_phones:
+                    results["skipped"] += 1
+                    duplicate_msg = f"Fila {i + 1}: Ya existe un contacto con el número {contact_request.phone_number}"
+                    results["duplicates"].append(duplicate_msg)
+                    print(f"⚠️  {duplicate_msg}")
+                    continue
+                
+                # Crear nuevo contacto
+                new_contact = WhatsappUser(
+                    phone_number=contact_request.phone_number,
+                    name=contact_request.name,
+                    is_active=contact_request.is_active
+                )
+                contacts_to_create.append(new_contact)
+                existing_phones.add(contact_request.phone_number)
+                print(f"✅ Contacto {i + 1} agregado para inserción")
+                
+            except Exception as e:
+                error_msg = f"Fila {i + 1}: {str(e)}"
+                results["errors"].append(error_msg)
+                print(f"❌ {error_msg}")
+        
+        # Insertar todos los contactos en una sola transacción
+        if contacts_to_create:
+            print(f"💾 Insertando {len(contacts_to_create)} contactos en la base de datos...")
+            db.add_all(contacts_to_create)
+            db.commit()
+            results["created"] = len(contacts_to_create)
+            print(f"✅ {results['created']} contactos insertados exitosamente")
+            
+            # Notificar a todos los clientes conectados sobre la actualización masiva de contactos
+            await manager.send_message_to_all({
+                "type": "contact_updated",
+                "data": {
+                    "action": "bulk_created",
+                    "count": len(contacts_to_create)
+                }
+            })
+        else:
+            print("⚠️  No hay contactos válidos para insertar")
+        
+        print(f"📊 Resultado final: {results['created']} creados, {results['skipped']} omitidos, {len(results['errors'])} errores")
+        
+        return {
+            "message": "Importación completada",
+            "results": results
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error al crear contactos en lote: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @app.put("/api/contacts/{phone_number}")
 async def update_contact(phone_number: str, contact_request: ContactUpdateRequest, db: Session = Depends(get_db)):
@@ -677,6 +768,15 @@ async def update_contact(phone_number: str, contact_request: ContactUpdateReques
         
         db.commit()
         db.refresh(contact)
+        
+        # Notificar a todos los clientes conectados sobre la actualización de contactos
+        await manager.send_message_to_all({
+            "type": "contact_updated",
+            "data": {
+                "action": "updated",
+                "contact_phone": contact.phone_number
+            }
+        })
         
         return {
             "message": "Contact updated successfully",
@@ -704,6 +804,15 @@ async def delete_contact(phone_number: str, db: Session = Depends(get_db)):
         
         db.delete(contact)
         db.commit()
+        
+        # Notificar a todos los clientes conectados sobre la eliminación de contactos
+        await manager.send_message_to_all({
+            "type": "contact_updated",
+            "data": {
+                "action": "deleted",
+                "contact_phone": phone_number
+            }
+        })
         
         return {"message": "Contact deleted successfully"}
         
@@ -918,6 +1027,97 @@ async def send_message(request: Request, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sending message: {e}")
+
+@app.get("/api/statistics")
+async def get_statistics(
+    period: str = Query("30d", description="Período de estadísticas: 7d, 30d, 90d, all"),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene estadísticas de mensajes por contacto.
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        # Calcular fecha de corte según el período
+        cutoff_date = None
+        if period != "all":
+            days = int(period.replace("d", ""))
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Obtener todos los usuarios
+        users = db.query(WhatsappUser).all()
+        
+        statistics = []
+        
+        for user in users:
+            # Construir query base para mensajes
+            query = db.query(Message).filter(Message.phone_number == user.phone_number)
+            
+            # Aplicar filtro de fecha si es necesario
+            if cutoff_date:
+                query = query.filter(Message.timestamp >= cutoff_date)
+            
+            messages = query.all()
+            
+            if messages:
+                # Calcular estadísticas
+                total_messages = len(messages)
+                sent_messages = len([m for m in messages if m.sender == "bot"])
+                received_messages = len([m for m in messages if m.sender == "user"])
+                
+                # Último mensaje
+                last_message = max(messages, key=lambda m: m.timestamp)
+                last_message_date = last_message.timestamp
+                
+                # Calcular tiempo promedio de respuesta
+                response_times = []
+                for i in range(len(messages) - 1):
+                    current_msg = messages[i]
+                    next_msg = messages[i + 1]
+                    time_diff = abs((next_msg.timestamp - current_msg.timestamp).total_seconds() / 60)
+                    if time_diff < 1440:  # Solo respuestas dentro de 24 horas
+                        response_times.append(time_diff)
+                
+                average_response_time = None
+                if response_times:
+                    average_response_time = sum(response_times) / len(response_times)
+                
+                # Calcular frecuencia de mensajes
+                first_message = min(messages, key=lambda m: m.timestamp)
+                days_diff = (last_message_date - first_message.timestamp).days
+                message_frequency = total_messages / max(days_diff, 1)
+                
+                statistics.append({
+                    "contact": {
+                        "phone_number": user.phone_number,
+                        "name": user.name,
+                        "last_interaction": last_message_date.isoformat(),
+                        "is_active": True
+                    },
+                    "total_messages": total_messages,
+                    "sent_messages": sent_messages,
+                    "received_messages": received_messages,
+                    "last_message_date": last_message_date.isoformat(),
+                    "average_response_time": average_response_time,
+                    "message_frequency": message_frequency
+                })
+        
+        # Ordenar por total de mensajes descendente
+        statistics.sort(key=lambda x: x["total_messages"], reverse=True)
+        
+        return {
+            "statistics": statistics,
+            "period": period,
+            "total_contacts": len(statistics),
+            "total_messages": sum(s["total_messages"] for s in statistics),
+            "total_sent": sum(s["sent_messages"] for s in statistics),
+            "total_received": sum(s["received_messages"] for s in statistics)
+        }
+        
+    except Exception as e:
+        print(f"Error al obtener estadísticas: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 

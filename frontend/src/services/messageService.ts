@@ -86,5 +86,26 @@ export const messageService = {
       console.error('Error sending message:', error);
       return false;
     }
+  },
+
+  async getStatistics(period: string = '30d'): Promise<any> {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/statistics?period=${period}`);
+      if (!response.ok) {
+        throw new Error('Error al cargar estadísticas');
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      return {
+        statistics: [],
+        period,
+        total_contacts: 0,
+        total_messages: 0,
+        total_sent: 0,
+        total_received: 0
+      };
+    }
   }
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './TemplatePanel.css';
 import { templateService } from '../services/templateService';
+import { useContacts } from '../contexts/ContactContext';
 
 interface Template {
   id: string;
@@ -13,12 +14,7 @@ interface Template {
   footer?: string;
 }
 
-interface Contact {
-  phone_number: string;
-  name: string;
-  is_active: boolean;
-  last_interaction: string | null;
-}
+
 
 interface TemplatePanelProps {
   onSendTemplate: (templateId: string, contactIds: string[]) => void;
@@ -27,8 +23,15 @@ interface TemplatePanelProps {
 const TemplatePanel: React.FC<TemplatePanelProps> = ({
   onSendTemplate,
 }) => {
+  const formatPhoneNumber = (phone: string) => {
+    // Formatear número de teléfono para mostrar
+    if (phone.startsWith('57')) {
+      return `+57 ${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8)}`;
+    }
+    return phone;
+  };
+  const { contacts } = useContacts();
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +43,6 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
 
   useEffect(() => {
     fetchTemplates();
-    fetchContacts();
     fetchArchivedTemplates(); // Cargar plantillas archivadas al inicio
   }, []);
 
@@ -56,21 +58,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     };
   }, []);
 
-  const fetchContacts = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/api/contacts');
-      if (!response.ok) throw new Error('Error al cargar contactos');
-      
-      const data = await response.json();
-      const allContacts = data.contacts || data;
-      
-      // Filtrar solo contactos activos
-      const activeContacts = allContacts.filter((contact: Contact) => contact.is_active);
-      setContacts(activeContacts);
-    } catch (err) {
-      console.error('Error cargando contactos:', err);
-    }
-  };
+
 
   const fetchTemplates = async () => {
     try {
@@ -147,10 +135,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     }
   };
 
-  const handleSubmitForApproval = async (templateId: string) => {
-    alert('Esta función está deshabilitada. Las plantillas se envían automáticamente para aprobación al crearlas.');
-    await fetchTemplates();
-  };
+
 
   const handleArchiveTemplate = async (templateId: string, templateName: string) => {
     if (!confirm(`¿Estás seguro de que quieres archivar la plantilla "${templateName}"?`)) {
@@ -176,7 +161,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     }
   };
 
-  const handleUnarchiveTemplate = async (templateId: string, templateName: string) => {
+  const handleUnarchiveTemplate = async (templateId: string) => {
     try {
       setArchivingTemplate(templateId);
       await templateService.unarchiveTemplate(templateId);
@@ -230,7 +215,8 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               className="create-template-btn"
               onClick={() => setShowCreateModal(true)}
             >
-              + Agregar
+              <span className="material-icons">add</span>
+              Agregar
             </button>
           )}
         </div>
@@ -284,10 +270,30 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               <div className="template-meta">
                 <span className="template-category">{template.category}</span>
                 <span className={`template-status status-${template.status.toLowerCase()}`}>
-                  {template.status === 'APPROVED' && '✅ Aprobado'}
-                  {template.status === 'PENDING' && '⏳ Pendiente'}
-                  {template.status === 'REJECTED' && '❌ Rechazado'}
-                  {template.status === 'DRAFT' && '📝 Borrador'}
+                  {template.status === 'APPROVED' && (
+                    <>
+                      <span className="material-icons">check_circle</span>
+                      Aprobado
+                    </>
+                  )}
+                  {template.status === 'PENDING' && (
+                    <>
+                      <span className="material-icons">schedule</span>
+                      Pendiente
+                    </>
+                  )}
+                  {template.status === 'REJECTED' && (
+                    <>
+                      <span className="material-icons">cancel</span>
+                      Rechazado
+                    </>
+                  )}
+                  {template.status === 'DRAFT' && (
+                    <>
+                      <span className="material-icons">edit</span>
+                      Borrador
+                    </>
+                  )}
                 </span>
               </div>
               <div className="template-preview">{template.content}</div>
@@ -323,7 +329,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                         e.stopPropagation();
                         setShowTemplateMenu(null);
                         if (showArchivedTemplates) {
-                          handleUnarchiveTemplate(template.id, template.name);
+                          handleUnarchiveTemplate(template.id);
                         } else {
                           handleArchiveTemplate(template.id, template.name);
                         }
@@ -487,9 +493,19 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                     </div>
                     <div className="contact-info">
                       <div className="contact-name">{contact.name}</div>
-                      <div className="contact-phone">{contact.phone_number}</div>
+                      <div className="contact-phone">{formatPhoneNumber(contact.phone_number)}</div>
                       <div className="contact-status">
-                        {contact.is_active ? '✅ Activo' : '❌ Inactivo'}
+                        {contact.is_active ? (
+                          <>
+                            <span className="material-icons">check_circle</span>
+                            Activo
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-icons">cancel</span>
+                            Inactivo
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

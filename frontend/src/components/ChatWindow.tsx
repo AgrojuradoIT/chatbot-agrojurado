@@ -31,6 +31,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isLoadingMore = false,
   selectedChat
 }) => {
+  const formatPhoneNumber = (phone: string) => {
+    // Formatear número de teléfono para mostrar
+    if (phone.startsWith('57')) {
+      return `+57 ${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8)}`;
+    }
+    return phone;
+  };
   return (
     <div className="chat-window">
       {selectedChat && (
@@ -41,7 +48,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
             <div className="contact-details">
               <div className="contact-name">{selectedChat.name}</div>
-              <div className="contact-phone">{selectedChat.phone}</div>
+              <div className="contact-phone">{formatPhoneNumber(selectedChat.phone)}</div>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import './ContactsPanel.css';
+import './ChatPanel.css';
+import { useContacts } from '../contexts/ContactContext';
 
 interface Chat {
   id: string;
@@ -11,54 +12,48 @@ interface Chat {
   isOnline?: boolean;
 }
 
-interface ContactsPanelProps {
+interface ChatPanelProps {
   selectedChat: Chat | null;
   onSelectChat: (chat: Chat) => void;
   selectedChats: string[];
   onToggleSelection: (chatId: string) => void;
   multiSelect: boolean;
-  refreshTrigger?: number;
 }
 
-const ContactsPanel: React.FC<ContactsPanelProps> = ({
+const ChatPanel: React.FC<ChatPanelProps> = ({
   selectedChat,
   onSelectChat,
   selectedChats,
   onToggleSelection,
   multiSelect,
-  refreshTrigger,
 }) => {
+  const { contacts, loading, error } = useContacts();
   const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  const formatPhoneNumber = (phone: string) => {
+    // Formatear número de teléfono para mostrar
+    if (phone.startsWith('57')) {
+      return `+57 ${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8)}`;
+    }
+    return phone;
+  };
+
+  // Convertir contactos a chats cuando cambien
   useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('http://localhost:8000/api/contacts');
-        if (!response.ok) {
-          throw new Error('Error al cargar contactos');
-        }
-        const data = await response.json();
-        setChats(data.contacts.map((contact: any) => ({ 
-          id: contact.phone_number, 
-          name: contact.name || 'Sin nombre', 
-          phone: contact.phone_number,
-          lastMessage: contact.last_interaction ? 'Última interacción: ' + new Date(contact.last_interaction).toLocaleDateString() : undefined,
-          lastMessageTime: contact.last_interaction ? new Date(contact.last_interaction) : undefined,
-          unreadCount: 0,
-          isOnline: false
-        })));
-      } catch (err) {
-        setError('Error al conectar con el servidor');
-        console.error('Error fetching contacts:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchContacts();
-  }, [refreshTrigger]);
+    if (contacts) {
+      setChats(contacts.map((contact: any) => ({ 
+        id: contact.phone_number, 
+        name: contact.name || 'Sin nombre', 
+        phone: contact.phone_number,
+        lastMessage: contact.last_interaction ? 'Última interacción: ' + new Date(contact.last_interaction).toLocaleDateString() : undefined,
+        lastMessageTime: contact.last_interaction ? new Date(contact.last_interaction) : undefined,
+        unreadCount: 0,
+        isOnline: false
+      })));
+    }
+  }, [contacts]);
+
+
 
   if (loading) {
     return <div className="contacts-panel">Cargando contactos...</div>;
@@ -68,7 +63,7 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({
     return <div className="contacts-panel" style={{ color: 'red' }}>Error: {error}</div>;
   }
   return (
-    <div className="contacts-panel">
+    <div className="chat-panel">
       <div className="contacts-header">
         <h3>Chats</h3>
         {multiSelect && (
@@ -98,7 +93,7 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({
             </div>
             <div className="contact-info">
               <div className="contact-name">{chat.name}</div>
-              <div className="contact-phone">{chat.phone}</div>
+              <div className="contact-phone">{formatPhoneNumber(chat.phone)}</div>
               {chat.lastMessage && (
                 <div className="contact-last-message">
                   {chat.lastMessage}
@@ -120,4 +115,4 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({
   );
 };
 
-export default ContactsPanel;
+export default ChatPanel;

@@ -1,12 +1,17 @@
 export interface WebSocketMessage {
-  type: 'new_message';
-  message: {
+  type: 'new_message' | 'template_updated' | 'contact_updated' | 'stats_updated';
+  message?: {
     id: string;
     text: string;
     sender: 'user' | 'bot';
     timestamp: string;
-    phone_number: string; // Agregar número de teléfono para identificar el contacto
+    phone_number: string;
     status?: 'sending' | 'sent' | 'delivered' | 'error';
+  };
+  data?: {
+    template_id?: string;
+    contact_phone?: string;
+    action?: 'created' | 'updated' | 'deleted';
   };
 }
 
@@ -80,15 +85,25 @@ export class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const data: WebSocketMessage = JSON.parse(event.data);
-        console.log('📨 Mensaje recibido para:', data.message.phone_number);
         
-        // Solo procesar mensajes del contacto actual
-        if (this.currentContact && data.message.phone_number === this.currentContact) {
+        // Manejar diferentes tipos de mensajes
+        if (data.type === 'new_message' && data.message) {
+          console.log('📨 Mensaje recibido para:', data.message.phone_number);
+          
+          // Solo procesar mensajes del contacto actual
+          if (this.currentContact && data.message.phone_number === this.currentContact) {
+            if (this.onMessageCallback) {
+              this.onMessageCallback(data);
+            }
+          } else {
+            console.log('📭 Mensaje ignorado - contacto diferente:', data.message.phone_number);
+          }
+        } else if (data.type === 'template_updated' || data.type === 'contact_updated' || data.type === 'stats_updated') {
+          console.log('🔄 Actualización recibida:', data.type, data.data);
+          // Procesar actualizaciones globales
           if (this.onMessageCallback) {
             this.onMessageCallback(data);
           }
-        } else {
-          console.log('📭 Mensaje ignorado - contacto diferente:', data.message.phone_number);
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);

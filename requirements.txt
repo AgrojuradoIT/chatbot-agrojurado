@@ -6,3 +6,7 @@ requests
 mysql-connector-python
 SQLAlchemy
 apscheduler
+pydantic
+websockets
+python-multipart
+alembic

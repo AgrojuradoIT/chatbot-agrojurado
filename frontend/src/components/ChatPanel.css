@@ -1,4 +1,4 @@
-.contacts-panel {
+.chat-panel {
   width: 350px;
   background-color: #111b21;
   border-right: 1px solid #374045;
@@ -8,12 +8,28 @@
   flex-shrink: 0;
 }
 
+.contact-manager-panel {
+  width: 350px;
+  background-color: #111b21;
+  border-left: 1px solid #374045;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex-shrink: 0;
+}
+
 .contacts-header {
   padding: 16px 20px;
   border-bottom: 1px solid #374045;
   background-color: #202c33;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.contacts-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
@@ -43,11 +59,47 @@
   gap: 12px;
 }
 
+/* Estilos para el botón de importar contactos */
+.import-contact-btn {
+  background: none;
+  border: 1px solid #17a2b8;
+  color: #17a2b8;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.import-contact-btn:hover {
+  background-color: rgba(23, 162, 184, 0.1);
+  color: #17a2b8;
+  transform: none;
+}
+
+.import-contact-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.import-contact-btn:active {
+  outline: none;
+  box-shadow: none;
+  transform: none;
+}
+
 /* Estilos para el botón de agregar contacto */
 .create-contact-btn {
-  background: linear-gradient(135deg, #00a884 0%, #008f72 100%);
-  border: none;
-  color: white;
+  background: none;
+  border: 1px solid #00a884;
+  color: #00a884;
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 12px;
@@ -67,8 +119,20 @@
 }
 
 .create-contact-btn:hover {
-  background: linear-gradient(135deg, #008f72 0%, #007a5f 100%);
-  transform: translateY(-1px);
+  background-color: rgba(0, 168, 132, 0.1);
+  color: #00a884;
+  transform: none;
+}
+
+.create-contact-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.create-contact-btn:active {
+  outline: none;
+  box-shadow: none;
+  transform: none;
 }
 
 .contacts-list {
@@ -363,10 +427,16 @@
 
 /* Responsive Design - Simple */
 @media (max-width: 768px) {
-  .contacts-panel {
+  .chat-panel {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #374045;
+  }
+  
+  .contact-manager-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #374045;
   }
   
   .contact-item {
@@ -406,4 +476,33 @@
   .contact-phone {
     font-size: 8px;
   }
+}
+
+/* Estilos para los iconos de Material Icons */
+.material-icons {
+  font-size: 16px;
+  margin-right: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.create-contact-btn .material-icons,
+.import-contact-btn .material-icons {
+  font-size: 14px;
+  margin-right: 4px;
+  color: inherit;
+}
+
+/* Estilos para iconos en estados de contactos */
+.contact-last-message .material-icons {
+  font-size: 12px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+/* Estilos para iconos en botones de acción */
+.edit-btn .material-icons,
+.delete-btn .material-icons {
+  font-size: 16px;
+  vertical-align: middle;
 }
