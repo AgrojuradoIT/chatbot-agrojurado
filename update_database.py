@@ -58,8 +58,8 @@ def create_database_if_not_exists():
             engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}")
         else:
             engine = create_engine(f"mysql+pymysql://{DB_USER}@{DB_HOST}:{DB_PORT}")
-        
-        with engine.connect() as conn:
+    
+    with engine.connect() as conn:
             # Crear base de datos si no existe
             conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
             conn.commit()
@@ -98,6 +98,10 @@ def create_indexes(engine, table_name):
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_category ON {table_name} (category);"))
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_status ON {table_name} (status);"))
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_archived ON {table_name} (is_archived);"))
+                # Nuevos índices para plantillas con medios
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_media_type ON {table_name} (media_type);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_has_media ON {table_name} (media_id, image_url);"))
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_template_type ON {table_name} (media_type, is_archived);"))
             elif table_name == "whatsapp_users":
                 # Índices para búsquedas por estado activo
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_active ON {table_name} (is_active);"))
@@ -216,13 +220,13 @@ def create_messages_table(engine):
                 for col_name, col_type in missing_columns:
                     if col_name == 'status':
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} VARCHAR(20) DEFAULT 'sent';"
-                    else:
+            else:
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
                     
                     conn.execute(text(add_column_sql))
                 conn.commit()
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
-        else:
+            else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
         
         # Crear índices adicionales
@@ -244,7 +248,11 @@ def create_templates_table(engine):
             rejected_reason VARCHAR(1000),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             footer VARCHAR(500),
-            is_archived BOOLEAN DEFAULT FALSE
+            is_archived BOOLEAN DEFAULT FALSE,
+            header_text VARCHAR(500),
+            media_type VARCHAR(20),
+            media_id VARCHAR(100),
+            image_url VARCHAR(500)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
         
@@ -267,7 +275,12 @@ def create_templates_table(engine):
             'rejected_reason': 'VARCHAR(1000)',
             'created_at': 'TIMESTAMP',
             'footer': 'VARCHAR(500)',
-            'is_archived': 'BOOLEAN'
+            'is_archived': 'BOOLEAN',
+            # Nuevas columnas para plantillas con medios
+            'header_text': 'VARCHAR(500)',
+            'media_type': 'VARCHAR(20)',
+            'media_id': 'VARCHAR(100)',
+            'image_url': 'VARCHAR(500)'
         }
         
         missing_columns = []
@@ -281,12 +294,22 @@ def create_templates_table(engine):
                 for col_name, col_type in missing_columns:
                     if col_name == 'is_archived':
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} BOOLEAN DEFAULT FALSE;"
+                    elif col_name in ['header_text', 'media_type', 'media_id', 'image_url']:
+                        # Nuevas columnas para medios
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type} NULL;"
                     else:
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
                     
                     conn.execute(text(add_column_sql))
                 conn.commit()
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
+            
+            # Mostrar información sobre las nuevas columnas agregadas
+            new_media_columns = [col for col in missing_columns if col[0] in ['header_text', 'media_type', 'media_id', 'image_url']]
+            if new_media_columns:
+                print("📸 Nuevas columnas para plantillas con medios:")
+                for col_name, col_type in new_media_columns:
+                    print(f"   - {col_name}: {col_type}")
         else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
         
@@ -331,11 +354,16 @@ def main():
         print("   ✅ Tabla 'messages' verificada/creada")
         print("   ✅ Tabla 'templates' verificada/creada")
         print("   ✅ Índices adicionales creados")
+        print("📸 Nuevas funcionalidades para plantillas con medios:")
+        print("   - header_text: Texto del encabezado de la plantilla")
+        print("   - media_type: Tipo de medio (IMAGE, VIDEO, DOCUMENT)")
+        print("   - media_id: ID del medio subido a WhatsApp")
+        print("   - image_url: URL de imagen para plantillas con URL")
         
     except SQLAlchemyError as e:
         print(f"❌ Error durante la actualización: {e}")
         sys.exit(1)
-    except Exception as e:
+        except Exception as e:
         print(f"❌ Error inesperado: {e}")
         sys.exit(1)
 

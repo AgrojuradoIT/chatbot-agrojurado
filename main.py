@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, Request, Query, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, Query, Depends, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ from database import SessionLocal, engine, Base, get_db
 from models.whatsapp_models import WhatsappUser, WebhookRequest, Message, Template, TemplateRequest, TemplateResponse, SendTemplateRequest, ContactCreateRequest, ContactUpdateRequest, ContactResponse
 from typing import List, Dict, Set
 import uuid
-from services.whatsapp_service import send_whatsapp_message, create_or_update_whatsapp_user, get_whatsapp_templates, create_whatsapp_template, send_whatsapp_template, delete_whatsapp_template
+from services.whatsapp_service import send_whatsapp_message, create_or_update_whatsapp_user, get_whatsapp_templates, create_whatsapp_template, send_whatsapp_template, delete_whatsapp_template, upload_media_to_whatsapp, upload_media_from_base64, create_template_with_local_media, create_template_with_base64_media
 import os
 import json
 from datetime import datetime
@@ -407,15 +407,46 @@ async def get_templates(db: Session = Depends(get_db)):
             for template in whatsapp_templates:
                 # Filtrar plantillas archivadas
                 if template.get("id") not in archived_ids:
+                    components = template.get("components", [])
+                    
+                    # Extraer información de multimedia del header
+                    header_component = next((c for c in components if c.get("type") == "HEADER"), None)
+                    media_info = {}
+                    
+                    if header_component:
+                        format_type = header_component.get("format", "")
+                        if format_type in ["IMAGE", "VIDEO", "DOCUMENT"]:
+                            media_info = {
+                                "has_media": True,
+                                "media_type": format_type,
+                                "header_text": header_component.get("text", "")
+                            }
+                            # Si tiene ejemplo con header_handle, incluirlo
+                            example = header_component.get("example", {})
+                            if "header_handle" in example:
+                                media_info["header_handle"] = example["header_handle"]
+                        else:
+                            media_info = {"has_media": False}
+                    else:
+                        media_info = {"has_media": False}
+                    
+                    # Extraer contenido del body y footer
+                    body_component = next((c for c in components if c.get("type") == "BODY"), None)
+                    footer_component = next((c for c in components if c.get("type") == "FOOTER"), None)
+                    
                     template_obj = {
                         "id": template.get("id"),
                         "name": template.get("name"),
                         "category": template.get("category"),
                         "language": template.get("language"),
                         "status": template.get("status"),
-                        "is_archived": False,  # Las plantillas de WhatsApp no están archivadas por defecto
-                        "components": template.get("components", [])
-                        }
+                        "is_archived": False,
+                        "components": components,
+                        "content": body_component.get("text", "") if body_component else "",
+                        "footer": footer_component.get("text", "") if footer_component else "",
+                        "header_text": header_component.get("text", "") if header_component else "",
+                        **media_info  # Incluir información de multimedia
+                    }
                     templates.append(template_obj)
             
             return {"templates": templates}
@@ -599,6 +630,412 @@ async def send_template_to_contacts(request: SendTemplateRequest, db: Session = 
     except Exception as e:
         print(f"Error sending template: {e}")
         raise HTTPException(status_code=500, detail=f"Error sending template: {e}")
+
+# Nuevos modelos para plantillas con multimedia
+class TemplateWithMediaRequest(BaseModel):
+    name: str
+    content: str
+    category: str
+    media_type: str = "IMAGE"  # IMAGE, VIDEO, DOCUMENT
+    language: str = "es"
+    footer: str = None
+    header_text: str = None
+
+class TemplateWithBase64MediaRequest(BaseModel):
+    name: str
+    content: str
+    category: str
+    base64_data: str
+    filename: str
+    media_type: str = "IMAGE"  # IMAGE, VIDEO, DOCUMENT
+    language: str = "es"
+    footer: str = None
+    header_text: str = None
+
+@app.post("/api/templates/create-with-file")
+async def create_template_with_file(file: UploadFile = File(...), 
+                                   name: str = Query(...),
+                                   content: str = Query(...),
+                                   category: str = Query(...),
+                                   media_type: str = Query("IMAGE"),
+                                   language: str = Query("es"),
+                                   footer: str = Query(None),
+                                   header_text: str = Query(None)):
+    """
+    Crea una nueva plantilla de WhatsApp con archivo multimedia subido.
+    Usa la API de subida reanudable para obtener header_handle.
+    """
+    try:
+        # Guardar archivo temporalmente
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            content_bytes = await file.read()
+            temp_file.write(content_bytes)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Crear plantilla con archivo local usando la nueva función
+            result = create_template_with_local_media(
+                name=name,
+                content=content,
+                category=category,
+                file_path=temp_file_path,
+                media_type=media_type.upper(),
+                language=language,
+                footer=footer,
+                header_text=header_text
+            )
+            
+            if result:
+                return {
+                    "success": True,
+                    "message": "Template with media created successfully",
+                    "template": result
+                }
+            else:
+                raise HTTPException(status_code=400, detail="Failed to create template with media")
+                
+        finally:
+            # Limpiar archivo temporal
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                
+    except Exception as e:
+        print(f"Error creating template with file: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating template: {str(e)}")
+
+@app.post("/api/templates/create-with-base64")
+async def create_template_with_base64(request: TemplateWithBase64MediaRequest):
+    """
+    Crea una nueva plantilla de WhatsApp con archivo multimedia desde base64.
+    Usa la API de subida reanudable para obtener header_handle.
+    """
+    try:
+        # Crear plantilla con datos base64 usando la nueva función
+        result = create_template_with_base64_media(
+            name=request.name,
+            content=request.content,
+            category=request.category,
+            base64_data=request.base64_data,
+            filename=request.filename,
+            media_type=request.media_type.upper(),
+            language=request.language,
+            footer=request.footer,
+            header_text=request.header_text
+        )
+        
+        if result:
+            return {
+                "success": True,
+                "message": "Template with media created successfully",
+                "template": result
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to create template with media")
+            
+    except Exception as e:
+        print(f"Error creating template with base64: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating template: {str(e)}")
+
+# =============================================================================
+# RUTAS DE MEDIOS (MEDIA)
+# =============================================================================
+
+from fastapi import UploadFile, File
+from services.whatsapp_service import upload_media_to_whatsapp, upload_media_from_base64
+
+@app.post("/api/media/upload")
+async def upload_media(file: UploadFile = File(...)):
+    """Sube un archivo multimedia a WhatsApp Business API"""
+    try:
+        # Guardar archivo temporalmente
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Subir a WhatsApp
+            media_id = upload_media_to_whatsapp(temp_file_path, file.content_type)
+            
+            if media_id:
+                return {
+                    "id": media_id,
+                    "filename": file.filename,
+                    "content_type": file.content_type,
+                    "size": len(content)
+                }
+            else:
+                raise HTTPException(status_code=400, detail="Failed to upload media to WhatsApp")
+                
+        finally:
+            # Limpiar archivo temporal
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                
+    except Exception as e:
+        print(f"Error uploading media: {e}")
+        raise HTTPException(status_code=500, detail=f"Error uploading media: {e}")
+
+@app.post("/api/media/upload-base64")
+async def upload_media_base64(request: Request):
+    """Sube un archivo multimedia desde datos base64 a WhatsApp Business API"""
+    try:
+        data = await request.json()
+        base64_data = data.get("base64_data")
+        filename = data.get("filename")
+        file_type = data.get("file_type")
+        
+        if not all([base64_data, filename, file_type]):
+            raise HTTPException(status_code=400, detail="base64_data, filename, and file_type are required")
+        
+        # Subir a WhatsApp
+        media_id = upload_media_from_base64(base64_data, filename, file_type)
+        
+        if media_id:
+            return {
+                "id": media_id,
+                "filename": filename,
+                "content_type": file_type
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to upload media to WhatsApp")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error uploading media from base64: {e}")
+        raise HTTPException(status_code=500, detail=f"Error uploading media: {e}")
+
+# =============================================================================
+# RUTAS DE PLANTILLAS CON MEDIOS
+# =============================================================================
+
+from models.whatsapp_models import TemplateWithMediaRequest, SendTemplateWithMediaRequest
+from services.whatsapp_service import (
+    create_whatsapp_template_with_media,
+    create_whatsapp_template_with_image_url,
+    create_simple_template_with_media,
+    create_simple_template_with_image_url,
+    send_whatsapp_template_with_media
+)
+
+@app.post("/api/templates/with-media", status_code=201)
+async def create_template_with_media(template_request: TemplateWithMediaRequest):
+    """Crea una nueva plantilla con contenido multimedia en WhatsApp Business API"""
+    try:
+        if template_request.media_id:
+            # Crear plantilla con medio subido
+            result = create_whatsapp_template_with_media(
+                name=template_request.name,
+                content=template_request.content,
+                category=template_request.category,
+                media_id=template_request.media_id,
+                media_type=template_request.media_type or "IMAGE",
+                language=template_request.language or "es",
+                footer=template_request.footer,
+                header_text=template_request.header_text
+            )
+        elif template_request.image_url:
+            # Crear plantilla con imagen desde URL
+            result = create_whatsapp_template_with_image_url(
+                name=template_request.name,
+                content=template_request.content,
+                category=template_request.category,
+                image_url=template_request.image_url,
+                language=template_request.language or "es",
+                footer=template_request.footer,
+                header_text=template_request.header_text
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Either media_id or image_url is required")
+        
+        if result:
+            return {"message": "Template with media created successfully", "result": result}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to create template with media")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating template with media: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating template with media: {e}")
+
+@app.post("/api/templates/send-with-media")
+async def send_template_with_media_to_contacts(request: SendTemplateWithMediaRequest, db: Session = Depends(get_db)):
+    """Envía una plantilla con contenido multimedia a múltiples contactos"""
+    try:
+        template_name = request.template_name
+        phone_numbers = request.phone_numbers
+        media_id = request.media_id
+        parameters = request.parameters or {}
+        header_parameters = request.header_parameters or {}
+        
+        results = []
+        success_count = 0
+        
+        # Obtener información de la plantilla para determinar el tipo de multimedia y media_id
+        templates_info = get_whatsapp_templates()
+        template_info = None
+        media_type = "IMAGE"  # Default
+        template_media_id = None
+        
+        if templates_info and 'data' in templates_info:
+            for template in templates_info['data']:
+                if template['name'] == template_name:
+                    template_info = template
+                    # Buscar componente de header para determinar el tipo y obtener media_id
+                    for component in template.get('components', []):
+                        if component.get('type') == 'HEADER':
+                            format_type = component.get('format', '').upper()
+                            if format_type in ['IMAGE', 'VIDEO', 'DOCUMENT']:
+                                media_type = format_type
+                                # Intentar extraer media_id del ejemplo
+                                example = component.get('example', {})
+                                if 'header_handle' in example and example['header_handle']:
+                                    # El header_handle puede contener el media_id o URL
+                                    handle_data = example['header_handle']
+                                    if isinstance(handle_data, list) and len(handle_data) > 0:
+                                        # Si es una URL, intentar extraer ID o usar como media_id
+                                        template_media_id = handle_data[0]
+                                    elif isinstance(handle_data, str):
+                                        template_media_id = handle_data
+                    break
+        
+        # Si no tenemos media_id específico, usar el de la plantilla
+        if not media_id and template_media_id:
+            media_id = template_media_id
+            print(f"📋 Usando media_id de la plantilla: {media_id}")
+        
+        for phone_number in phone_numbers:
+            try:
+                # Para plantillas multimedia, necesitamos obtener un media_id válido
+                if media_id and media_id.startswith('http'):
+                    # Si tenemos una URL, intentar subir la imagen para obtener media_id
+                    print(f"🔄 Subiendo imagen desde URL para obtener media_id válido...")
+                    try:
+                        import requests
+                        import tempfile
+                        import os
+                        
+                        # Descargar la imagen temporalmente
+                        response = requests.get(media_id, timeout=10)
+                        if response.status_code == 200:
+                            # Crear archivo temporal
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                                temp_file.write(response.content)
+                                temp_path = temp_file.name
+                            
+                            # Subir a WhatsApp para obtener media_id
+                            from services.whatsapp_service import upload_media_to_whatsapp
+                            whatsapp_media_id = upload_media_to_whatsapp(temp_path, "image/png")
+                            
+                            # Limpiar archivo temporal
+                            os.unlink(temp_path)
+                            
+                            if whatsapp_media_id:
+                                print(f"✅ Media_id obtenido: {whatsapp_media_id}")
+                                media_id = whatsapp_media_id
+                            else:
+                                print(f"❌ Error al subir imagen, usando plantilla regular")
+                                media_id = None
+                        else:
+                            print(f"❌ Error al descargar imagen: {response.status_code}")
+                            media_id = None
+                    except Exception as e:
+                        print(f"❌ Error procesando imagen: {e}")
+                        media_id = None
+                
+                # Ahora enviar con el media_id correcto o como plantilla regular
+                if media_id and not media_id.startswith('http'):
+                    # Si tenemos un media_id válido, usar función multimedia
+                    success = send_whatsapp_template_with_media(
+                        to=phone_number,
+                        template_name=template_name,
+                        media_type=media_type,
+                        media_id=media_id,
+                        parameters=parameters,
+                        header_parameters=header_parameters
+                    )
+                else:
+                    # Como último recurso, usar función regular
+                    print(f"📋 Enviando plantilla '{template_name}' como plantilla regular")
+                    success = send_whatsapp_template(
+                        to=phone_number,
+                        template_name=template_name,
+                        parameters=parameters
+                    )
+                
+                if success:
+                    # Crear contenido de la plantilla para guardar
+                    template_content = f"Plantilla con medio enviada: {template_name}"
+                    if parameters:
+                        template_content += f" con parámetros: {parameters}"
+                    
+                    # Guardar mensaje del bot
+                    bot_message_obj = Message(
+                        id=f"bot_template_media_{phone_number}_{int(datetime.utcnow().timestamp())}",
+                        phone_number=phone_number,
+                        sender='bot',
+                        content=template_content,
+                        status='sent'
+                    )
+                    db.add(bot_message_obj)
+                    db.commit()
+                    
+                    # Notificar a clientes conectados
+                    template_message_data = {
+                        "type": "new_message",
+                        "message": {
+                            "id": bot_message_obj.id,
+                            "text": bot_message_obj.content,
+                            "sender": "bot",
+                            "timestamp": bot_message_obj.timestamp.isoformat(),
+                            "phone_number": phone_number,
+                            "status": bot_message_obj.status
+                        }
+                    }
+                    
+                    await manager.send_message_to_phone(phone_number, template_message_data)
+                    await manager.send_message_to_all(template_message_data)
+                    
+                    results.append({
+                        "phone_number": phone_number,
+                        "success": True,
+                        "message": "Plantilla con medio enviada exitosamente"
+                    })
+                    success_count += 1
+                else:
+                    results.append({
+                        "phone_number": phone_number,
+                        "success": False,
+                        "message": "Error al enviar plantilla con medio"
+                    })
+                    
+            except Exception as e:
+                print(f"Error enviando plantilla con medio a {phone_number}: {e}")
+                results.append({
+                    "phone_number": phone_number,
+                    "success": False,
+                    "message": f"Error: {str(e)}"
+                })
+        
+        return {
+            "template_name": template_name,
+            "media_id": media_id,
+            "total_contacts": len(phone_numbers),
+            "success_count": success_count,
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"Error sending template with media: {e}")
+        raise HTTPException(status_code=500, detail=f"Error sending template with media: {e}")
 
 # =============================================================================
 # RUTAS DE CONTACTOS

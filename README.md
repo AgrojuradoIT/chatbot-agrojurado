@@ -1,6 +1,6 @@
 # 🤖 Chatbot WhatsApp - Agropecuaria Juradó S.A.S
 
-Un sistema completo de chatbot para WhatsApp que permite la gestión de contactos, envío de mensajes, plantillas y comunicación en tiempo real.
+Un sistema completo de chatbot para WhatsApp que permite la gestión de contactos, envío de mensajes, plantillas y comunicación en tiempo real con integración de IA.
 
 ## 📋 Tabla de Contenidos
 
@@ -21,50 +21,72 @@ Un sistema completo de chatbot para WhatsApp que permite la gestión de contacto
 Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para **Agropecuaria Juradó S.A.S**. El sistema incluye:
 
 - **Backend**: API REST con FastAPI para gestionar mensajes, contactos y plantillas
-- **Frontend**: Interfaz web en React/TypeScript para administrar el chatbot
-- **Base de Datos**: MySQL para almacenar contactos, mensajes y plantillas
+- **Frontend**: Interfaz web moderna en React/TypeScript con Vite
+- **Base de Datos**: MySQL con SQLAlchemy para almacenar contactos, mensajes y plantillas
 - **WebSocket**: Comunicación en tiempo real entre frontend y backend
 - **Integración WhatsApp**: Webhook para recibir y enviar mensajes automáticamente
+- **IA Integrada**: Respuestas automáticas usando Google Gemini AI
+- **Gestión de Media**: Subida y gestión de archivos multimedia
 
 ## ✨ Características
 
 ### 🔧 Backend (FastAPI)
-- ✅ API REST completa para gestión de contactos
-- ✅ Sistema de plantillas de WhatsApp
-- ✅ Webhook para mensajes entrantes
-- ✅ Respuestas automáticas con IA (Gemini)
+- ✅ API REST completa para gestión de contactos y mensajes
+- ✅ Sistema avanzado de plantillas de WhatsApp con media
+- ✅ Webhook para mensajes entrantes con procesamiento automático
+- ✅ Respuestas automáticas con IA (Google Gemini)
 - ✅ WebSocket para comunicación en tiempo real
-- ✅ Base de datos MySQL con SQLAlchemy
+- ✅ Base de datos MySQL con SQLAlchemy y Alembic
+- ✅ Gestión de archivos multimedia (imágenes, documentos, audio)
+- ✅ Sistema de estadísticas y métricas
+- ✅ Importación masiva de contactos
+- ✅ Gestión de plantillas archivadas
 
-### 🎨 Frontend (React + TypeScript)
-- ✅ Interfaz moderna y responsiva
+### 🎨 Frontend (React + TypeScript + Vite)
+- ✅ Interfaz moderna y responsiva con diseño adaptativo
 - ✅ Chat en tiempo real con WebSocket
-- ✅ Gestión de contactos
-- ✅ Panel de plantillas
+- ✅ Panel de gestión de contactos con importación masiva
+- ✅ Editor avanzado de plantillas con soporte multimedia
+- ✅ Dashboard de estadísticas con gráficos interactivos
 - ✅ Scroll infinito para mensajes
-- ✅ Diseño adaptativo
+- ✅ Selector de medios para plantillas
+- ✅ Gestión de estado con Context API
+- ✅ Componentes reutilizables y modulares
 
 ### 🤖 Funcionalidades del Chatbot
-- ✅ Respuestas automáticas a mensajes
-- ✅ Menú interactivo con opciones
-- ✅ Gestión de contactos automática
-- ✅ Plantillas personalizables
-- ✅ Historial de conversaciones
+- ✅ Respuestas automáticas inteligentes con IA
+- ✅ Menú interactivo con opciones dinámicas
+- ✅ Gestión automática de contactos
+- ✅ Plantillas personalizables con variables
+- ✅ Historial completo de conversaciones
+- ✅ Soporte para diferentes tipos de media
+- ✅ Sistema de estados de mensajes
 
 ## 🏗️ Arquitectura del Sistema
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   WhatsApp      │    │   Frontend      │    │   Backend       │
-│   (Webhook)     │◄──►│   (React)       │◄──►│   (FastAPI)     │
+│   (Webhook)     │◄──►│   (React/Vite)  │◄──►│   (FastAPI)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │                       │
                                 │                       │
                                 ▼                       ▼
                        ┌─────────────────┐    ┌─────────────────┐
                        │   WebSocket     │    │   MySQL DB      │
-                       │   (Tiempo Real) │    │   (Datos)       │
+                       │   (Tiempo Real) │    │   (SQLAlchemy)  │
                        └─────────────────┘    └─────────────────┘
+                                │                       │
+                                │                       ▼
+                                │              ┌─────────────────┐
+                                │              │   Google Gemini │
+                                │              │   (IA)          │
+                                │              └─────────────────┘
+                                ▼
+                       ┌─────────────────┐
+                       │   Media Storage │
+                       │   (Archivos)    │
+                       └─────────────────┘
 ```
 
 ## 🚀 Instalación
@@ -75,6 +97,7 @@ Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para 
 - Node.js 16+
 - MySQL 8.0+
 - Cuenta de WhatsApp Business API
+- API Key de Google Gemini
 
 ### 1. Clonar el Repositorio
 
@@ -94,19 +117,15 @@ source venv/bin/activate  # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Configurar variables de entorno
-cp .env.example .env
+cp env.example .env
 # Editar .env con tus credenciales
 ```
 
 ### 3. Configurar la Base de Datos
 
 ```bash
-# Crear base de datos
-mysql -u root -p
-CREATE DATABASE agrojura_web;
-
-# Ejecutar migraciones
-python init_db.py
+# Ejecutar script de actualización de base de datos
+python update_database.py
 ```
 
 ### 4. Configurar el Frontend
@@ -127,7 +146,11 @@ WHATSAPP_PHONE_NUMBER_ID=tu_phone_number_id
 WHATSAPP_VERIFY_TOKEN=Agrojurado2026
 
 # Base de Datos
-DATABASE_URL=mysql://usuario:password@localhost/agrojura_web
+DB_HOST=localhost
+DB_USER=root
+DB_NAME=agrojura
+DB_PASSWORD=tu_password
+DB_PORT=3306
 
 # Google Gemini AI
 GOOGLE_API_KEY=tu_api_key_de_gemini
@@ -139,7 +162,15 @@ PORT=8000
 
 ### Configurar Webhook de WhatsApp
 
-Ver el archivo [WEBHOOK_SETUP.md](WEBHOOK_SETUP.md) para instrucciones detalladas.
+1. **Configurar en Meta Developers**:
+   - URL: `https://tu-dominio.com/webhook`
+   - Verify Token: `TU_TOKEN_AQUI`
+   - Suscribirse a eventos: `messages`, `message_deliveries`
+
+2. **Verificar webhook**:
+   ```bash
+   curl "https://tu-dominio.com/webhook?hub.mode=subscribe&hub.challenge=CHALLENGE_ACCEPTED&hub.verify_token=Agrojurado2026"
+   ```
 
 ## 🎮 Uso
 
@@ -169,20 +200,35 @@ npm run dev
 ### Gestión de Contactos
 - `GET /api/contacts` - Obtener todos los contactos
 - `POST /api/contacts` - Crear nuevo contacto
+- `POST /api/contacts/bulk` - Crear contactos masivamente
 - `GET /api/contacts/{phone_number}` - Obtener contacto específico
 - `PUT /api/contacts/{phone_number}` - Actualizar contacto
 - `DELETE /api/contacts/{phone_number}` - Eliminar contacto
 
 ### Gestión de Mensajes
 - `GET /api/messages/{phone_number}` - Obtener mensajes de un contacto
-- `POST /api/messages/send` - Enviar mensaje
+- `GET /api/messages/{phone_number}/older` - Obtener mensajes más antiguos
 - `GET /api/messages/{phone_number}/recent` - Mensajes recientes
+- `POST /api/messages/send` - Enviar mensaje
+- `GET /api/debug/messages/{phone_number}` - Debug de mensajes
 
 ### Gestión de Plantillas
-- `GET /api/templates` - Obtener plantillas
+- `GET /api/templates` - Obtener plantillas activas
+- `GET /api/templates/archived` - Obtener plantillas archivadas
 - `POST /api/templates` - Crear plantilla
+- `POST /api/templates/with-media` - Crear plantilla con media
 - `DELETE /api/templates/{template_id}` - Eliminar plantilla
+- `POST /api/templates/{template_id}/archive` - Archivar plantilla
+- `POST /api/templates/{template_id}/unarchive` - Desarchivar plantilla
 - `POST /api/templates/send` - Enviar plantilla a contactos
+- `POST /api/templates/send-with-media` - Enviar plantilla con media
+
+### Gestión de Media
+- `POST /api/media/upload` - Subir archivo multimedia
+- `POST /api/media/upload-base64` - Subir media desde base64
+
+### Estadísticas
+- `GET /api/statistics` - Obtener estadísticas del sistema
 
 ### WebSocket
 - `WS /ws/{phone_number}` - WebSocket para contacto específico
@@ -196,23 +242,43 @@ npm run dev
 
 ```
 chatbot-agrojurado/
-├── 📁 frontend/                 # Aplicación React
+├── 📁 frontend/                 # Aplicación React con Vite
 │   ├── 📁 src/
 │   │   ├── 📁 components/      # Componentes React
+│   │   │   ├── ChatPanel.tsx   # Panel principal del chat
+│   │   │   ├── ChatWindow.tsx  # Ventana de chat
+│   │   │   ├── ContactManager.tsx # Gestión de contactos
+│   │   │   ├── ContactImport.tsx # Importación masiva
+│   │   │   ├── TemplatePanel.tsx # Editor de plantillas
+│   │   │   ├── MediaSelector.tsx # Selector de medios
+│   │   │   ├── StatisticsDashboard.tsx # Dashboard de estadísticas
+│   │   │   ├── MessageStatus.tsx # Estados de mensajes
+│   │   │   ├── InputArea.tsx   # Área de entrada
+│   │   │   └── InfiniteScroll.tsx # Scroll infinito
 │   │   ├── 📁 services/        # Servicios de API
-│   │   └── 📁 hooks/          # Custom hooks
+│   │   │   ├── contactService.ts
+│   │   │   ├── messageService.ts
+│   │   │   ├── templateService.ts
+│   │   │   └── websocketService.ts
+│   │   ├── 📁 contexts/        # Context API
+│   │   │   └── ContactContext.tsx
+│   │   ├── 📁 hooks/          # Custom hooks
+│   │   └── 📁 config/         # Configuración
 │   ├── package.json
-│   └── README.md
+│   └── vite.config.ts
 ├── 📁 models/                  # Modelos de base de datos
 │   └── whatsapp_models.py
 ├── 📁 services/                # Servicios del backend
-│   ├── whatsapp_service.py
-│   └── gemini_service.py
+│   ├── whatsapp_service.py     # Servicio de WhatsApp
+│   └── gemini_service.py      # Servicio de IA
+├── 📁 static/                  # Archivos estáticos
+│   ├── 📁 images/
+│   └── 📁 uploads/
 ├── 📄 main.py                  # Aplicación principal FastAPI
 ├── 📄 database.py              # Configuración de base de datos
+├── 📄 update_database.py       # Script de actualización de BD
 ├── 📄 requirements.txt         # Dependencias Python
-├── 📄 init_db.py              # Inicialización de BD
-└── 📄 WEBHOOK_SETUP.md        # Configuración del webhook
+└── 📄 env.example             # Ejemplo de variables de entorno
 ```
 
 ## 🛠️ Desarrollo
@@ -220,6 +286,9 @@ chatbot-agrojurado/
 ### Scripts Útiles
 
 ```bash
+# Actualizar base de datos
+python update_database.py
+
 # Probar webhook
 python test_webhook.py
 
@@ -252,6 +321,25 @@ cd frontend
 npm run build
 ```
 
+### Nuevas Funcionalidades
+
+#### 🎨 Frontend Mejorado
+- **Componentes Modulares**: Cada funcionalidad tiene su propio componente
+- **Context API**: Gestión de estado global para contactos
+- **WebSocket Real-time**: Comunicación instantánea
+- **Media Management**: Subida y gestión de archivos multimedia
+- **Statistics Dashboard**: Gráficos interactivos con Recharts
+- **Infinite Scroll**: Carga eficiente de mensajes
+- **Template Editor**: Editor avanzado de plantillas
+
+#### 🔧 Backend Avanzado
+- **Media Upload**: Soporte para subida de archivos
+- **Bulk Operations**: Operaciones masivas para contactos
+- **Template Management**: Sistema completo de plantillas
+- **Statistics API**: Métricas y estadísticas del sistema
+- **WebSocket Manager**: Gestión avanzada de conexiones
+- **AI Integration**: Integración con Google Gemini
+
 ## 🚀 Despliegue
 
 ### Producción
@@ -260,15 +348,15 @@ npm run build
    ```bash
    # Instalar dependencias del sistema
    sudo apt update
-   sudo apt install python3 python3-pip nodejs npm mysql-server
+   sudo apt install python3 python3-pip nodejs npm mysql-server nginx
    ```
 
 2. **Configurar base de datos**:
    ```bash
    mysql -u root -p
-   CREATE DATABASE agrojura_web;
+   CREATE DATABASE agrojura;
    CREATE USER 'agrojurado'@'localhost' IDENTIFIED BY 'password';
-   GRANT ALL PRIVILEGES ON agrojura_web.* TO 'agrojurado'@'localhost';
+   GRANT ALL PRIVILEGES ON agrojura.* TO 'agrojurado'@'localhost';
    ```
 
 3. **Configurar variables de entorno**:
@@ -277,16 +365,40 @@ npm run build
    nano .env
    ```
 
-4. **Iniciar servicios**:
+4. **Actualizar base de datos**:
+   ```bash
+   python update_database.py
+   ```
+
+5. **Build del frontend**:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+6. **Configurar nginx**:
+   ```nginx
+   server {
+       listen 80;
+       server_name tu-dominio.com;
+       
+       location / {
+           proxy_pass http://localhost:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+       }
+       
+       location /static/ {
+           alias /path/to/chatbot-agrojurado/static/;
+       }
+   }
+   ```
+
+7. **Iniciar servicios**:
    ```bash
    # Backend con systemd
    sudo systemctl enable chatbot-backend
    sudo systemctl start chatbot-backend
-
-   # Frontend (build estático)
-   cd frontend
-   npm run build
-   # Servir con nginx
    ```
 
 ### Docker (Opcional)
@@ -309,22 +421,33 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```bash
 # Verificar conexión
 python -c "from database import SessionLocal; db = SessionLocal(); print('Conexión exitosa')"
+
+# Actualizar base de datos
+python update_database.py
 ```
 
 #### 2. Webhook no Funciona
 - Verificar que el webhook esté verificado en Meta Developers
 - Comprobar que la URL sea accesible desde internet
 - Revisar logs del servidor
+- Verificar `WHATSAPP_VERIFY_TOKEN`
 
 #### 3. Frontend no se Conecta al Backend
 - Verificar CORS en `main.py`
 - Comprobar que el backend esté corriendo en puerto 8000
 - Revisar configuración de WebSocket
+- Verificar variables de entorno
 
 #### 4. Mensajes no se Envían
 - Verificar `WHATSAPP_ACCESS_TOKEN`
 - Comprobar `WHATSAPP_PHONE_NUMBER_ID`
 - Revisar logs de la API de WhatsApp
+- Verificar permisos de la cuenta de WhatsApp Business
+
+#### 5. Media no se Sube
+- Verificar permisos de escritura en `/static/uploads/`
+- Comprobar límites de tamaño de archivo
+- Revisar configuración de `python-multipart`
 
 ### Logs Útiles
 
@@ -337,6 +460,22 @@ uvicorn main:app --log-level debug
 
 # Ver logs de MySQL
 sudo tail -f /var/log/mysql/error.log
+
+# Ver logs del frontend
+cd frontend && npm run dev
+```
+
+### Verificación de Servicios
+
+```bash
+# Verificar que todos los servicios estén corriendo
+ps aux | grep -E "(uvicorn|node|mysql)"
+
+# Verificar puertos
+netstat -tlnp | grep -E "(8000|5173|3306)"
+
+# Verificar variables de entorno
+python -c "import os; from dotenv import load_dotenv; load_dotenv(); print('Variables cargadas:', bool(os.getenv('WHATSAPP_ACCESS_TOKEN')))"
 ```
 
 ## 📞 Soporte
@@ -347,6 +486,7 @@ Para soporte técnico o preguntas:
 2. **Verificar configuración** de variables de entorno
 3. **Comprobar conectividad** de red y servicios
 4. **Consultar documentación** de WhatsApp Business API
+5. **Verificar base de datos** con `update_database.py`
 
 ## 📄 Licencia
 

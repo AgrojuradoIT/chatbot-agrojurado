@@ -285,14 +285,8 @@ function App() {
       const formattedMessages = recentMessages.map(msg => ({
         id: msg.id,
         text: msg.text,
-        // Corregir la perspectiva: 
-        // - Mensajes de 'user' (WhatsApp) = recibidos (bot)
-        // - Mensajes de 'bot' (tú) = enviados (user)
         sender: (msg.sender === 'user' ? 'bot' : 'user') as 'user' | 'bot',
         timestamp: new Date(msg.timestamp),
-        // Corregir estados:
-        // - Mensajes de 'user' (recibidos) = sin estado (undefined)
-        // - Mensajes de 'bot' (enviados) = usar el status real
         status: msg.sender === 'user' ? undefined : (msg.status as 'sending' | 'sent' | 'delivered' | 'error')
       }));
       // Eliminar duplicados antes de establecer

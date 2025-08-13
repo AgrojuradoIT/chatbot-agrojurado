@@ -49,6 +49,16 @@ class TemplateRequest(BaseModel):
     language: str = "es"
     footer: str = None
 
+class TemplateWithMediaRequest(BaseModel):
+    name: str
+    content: str
+    category: str
+    language: str = "es"
+    footer: str = None
+    media_type: str = "IMAGE"  # IMAGE, VIDEO, DOCUMENT
+    media_id: str = None
+    image_url: str = None
+
 class TemplateResponse(BaseModel):
     id: str
     name: str
@@ -62,6 +72,13 @@ class SendTemplateRequest(BaseModel):
     template_name: str
     phone_numbers: List[str]
     parameters: Optional[Dict[str, Any]] = None
+
+class SendTemplateWithMediaRequest(BaseModel):
+    template_name: str
+    phone_numbers: List[str]
+    media_id: str
+    parameters: Optional[Dict[str, Any]] = None
+    header_parameters: Optional[Dict[str, Any]] = None
 
 class ContactCreateRequest(BaseModel):
     phone_number: str
@@ -90,3 +107,8 @@ class Template(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     footer = Column(String(500), nullable=True)
     is_archived = Column(Boolean, default=False)
+    # Nuevos campos para plantillas con medios
+    header_text = Column(String(500), nullable=True)
+    media_type = Column(String(20), nullable=True)  # IMAGE, VIDEO, DOCUMENT
+    media_id = Column(String(100), nullable=True)
+    image_url = Column(String(500), nullable=True)

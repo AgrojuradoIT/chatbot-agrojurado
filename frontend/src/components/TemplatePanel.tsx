@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './TemplatePanel.css';
 import { templateService } from '../services/templateService';
+import type { TemplateWithMediaRequest } from '../services/templateService';
 import { useContacts } from '../contexts/ContactContext';
+import MediaSelector from './MediaSelector';
 
 interface Template {
   id: string;
@@ -12,6 +14,13 @@ interface Template {
   rejected_reason?: string;
   created_at: string;
   footer?: string;
+  // Campos para plantillas con medios
+  has_media?: boolean;
+  header_text?: string;
+  media_type?: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+  media_id?: string;
+  image_url?: string;
+  header_handle?: string;
 }
 
 
@@ -113,25 +122,34 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     footer: '',
   });
 
-  const handleSendTemplate = async () => {
-    if (selectedContacts.length === 0) {
-      alert('Por favor selecciona al menos un contacto');
-      return;
-    }
+  // Estados para plantillas con medios
+  const [templateType, setTemplateType] = useState<'text' | 'media'>('text');
+  const [selectedMediaId, setSelectedMediaId] = useState<string>('');
+  const [selectedMediaType, setSelectedMediaType] = useState<string>('');
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    try {
-      const templateName = templates.find(t => t.id === selectedTemplate)?.name;
-      if (!templateName) {
-        throw new Error('Plantilla no encontrada');
-      }
+  // Categorías que permiten medios
+  const mediaAllowedCategories = ['MARKETING', 'UTILITY', 'TRANSACTIONAL'];
 
-      const result = await templateService.sendTemplate(templateName, selectedContacts, {});
-      alert(`Plantilla enviada exitosamente a ${result.results.filter((r: any) => r.success).length} contactos`);
-      onSendTemplate(selectedTemplate, selectedContacts);
-      setSelectedTemplate('');
-    } catch (err: any) {
-      console.error('Error:', err);
-      alert(err.message || 'Error al enviar la plantilla');
+  // Función para verificar si la categoría permite medios
+  const categoryAllowsMedia = (category: string) => {
+    return mediaAllowedCategories.includes(category);
+  };
+
+  // Función para obtener descripción de la categoría
+  const getCategoryDescription = (category: string) => {
+    switch (category) {
+      case 'MARKETING':
+        return 'Promociones y ofertas comerciales';
+      case 'UTILITY':
+        return 'Recordatorios y servicios informativos';
+      case 'TRANSACTIONAL':
+        return 'Confirmaciones de pedidos y facturas';
+      case 'OTP':
+        return 'Códigos de verificación (solo texto)';
+      default:
+        return '';
     }
   };
 
@@ -206,6 +224,175 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     }
   };
 
+  const handleCreateTemplateWithMedia = async () => {
+    if (newTemplate.name && newTemplate.content) {
+      try {
+        // Validar que la categoría permita medios si se seleccionó tipo media
+        if (templateType === 'media' && !categoryAllowsMedia(newTemplate.category)) {
+          alert('Esta categoría no permite medios multimedia. Selecciona otra categoría o cambia a "Solo Texto".');
+          return;
+        }
+
+        // Validar que se haya seleccionado un medio si es tipo media
+        if (templateType === 'media' && !selectedFile && !selectedImageUrl) {
+          alert('Por favor selecciona una imagen o video para la plantilla con medios.');
+          return;
+        }
+
+        if (templateType === 'media') {
+          if (selectedFile) {
+            // Crear plantilla con archivo usando el nuevo endpoint
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            const response = await fetch(`http://localhost:8000/api/templates/create-with-file?name=${encodeURIComponent(newTemplate.name)}&content=${encodeURIComponent(newTemplate.content)}&category=${newTemplate.category}&media_type=${selectedMediaType}&language=es${newTemplate.footer ? `&footer=${encodeURIComponent(newTemplate.footer)}` : ''}`, {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || 'Error al crear plantilla con archivo');
+            }
+            
+            const result = await response.json();
+            console.log('Plantilla creada exitosamente:', result);
+          } else if (selectedImageUrl) {
+            // Usar el servicio existente para URL de imagen
+            const templateData: TemplateWithMediaRequest = {
+              name: newTemplate.name,
+              content: newTemplate.content,
+              category: newTemplate.category as 'UTILITY' | 'MARKETING' | 'TRANSACTIONAL' | 'OTP',
+              footer: newTemplate.footer || undefined,
+              media_type: 'IMAGE',
+              image_url: selectedImageUrl
+            };
+            await templateService.createTemplateWithMedia(templateData);
+          }
+        } else {
+          // Crear plantilla solo texto
+          await templateService.createTemplate({
+            name: newTemplate.name,
+            content: newTemplate.content,
+            category: newTemplate.category as 'UTILITY' | 'MARKETING' | 'TRANSACTIONAL' | 'OTP',
+            footer: newTemplate.footer
+          });
+        }
+        
+        await fetchTemplates();
+        // Limpiar estados
+        setNewTemplate({ name: '', content: '', category: 'UTILITY', footer: '' });
+        setTemplateType('text');
+        setSelectedMediaId('');
+        setSelectedMediaType('');
+        setSelectedImageUrl('');
+        setSelectedFile(null);
+        setShowCreateModal(false);
+      } catch (err: any) {
+        console.error('Error:', err);
+        alert(err.message || 'Error al crear la plantilla');
+      }
+    }
+  };
+
+  const handleMediaSelected = (mediaId: string, mediaType: string, _mediaUrl?: string) => {
+    setSelectedMediaId(mediaId);
+    setSelectedMediaType(mediaType);
+    setSelectedImageUrl(''); // Limpiar URL si se selecciona archivo
+    setSelectedFile(null); // Limpiar archivo si se selecciona media ID
+  };
+
+  const handleFileSelected = (file: File, mediaType: string) => {
+    setSelectedFile(file);
+    setSelectedMediaType(mediaType);
+    setSelectedMediaId(''); // Limpiar media ID si se selecciona archivo
+    setSelectedImageUrl(''); // Limpiar URL si se selecciona archivo
+  };
+
+  const handleImageUrlSelected = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setSelectedMediaType('IMAGE');
+  };
+
+  const handleClearMedia = () => {
+    setSelectedMediaId('');
+    setSelectedMediaType('');
+    setSelectedImageUrl('');
+    setSelectedFile(null);
+  };
+
+  const handleSendTemplateWithMedia = async () => {
+    if (selectedContacts.length === 0) {
+      alert('Por favor selecciona al menos un contacto');
+      return;
+    }
+
+    try {
+      const templateName = templates.find(t => t.id === selectedTemplate)?.name;
+      if (!templateName) {
+        throw new Error('Plantilla no encontrada');
+      }
+
+      const template = templates.find(t => t.id === selectedTemplate);
+      
+      // Verificar si la plantilla tiene multimedia
+      if (template?.has_media || template?.media_id || template?.image_url) {
+        // Para plantillas con multimedia, usar el endpoint específico
+        console.log('Enviando plantilla con multimedia:', template);
+        
+        // Determinar el media_id a usar
+        const mediaId = template.media_id || template.image_url || '';
+        
+        // Preparar header_parameters con el enlace si está disponible
+        const headerParams: any = {};
+        if (template.header_handle && template.media_type === 'IMAGE') {
+          // Asegurar que el enlace sea un string (puede venir como array)
+          const imageLink = Array.isArray(template.header_handle) 
+            ? template.header_handle[0] 
+            : template.header_handle;
+          headerParams.image_link = imageLink;
+        } else if (template.header_handle && template.media_type === 'VIDEO') {
+          const videoLink = Array.isArray(template.header_handle) 
+            ? template.header_handle[0] 
+            : template.header_handle;
+          headerParams.video_link = videoLink;
+        } else if (template.header_handle && template.media_type === 'DOCUMENT') {
+          const documentLink = Array.isArray(template.header_handle) 
+            ? template.header_handle[0] 
+            : template.header_handle;
+          headerParams.document_link = documentLink;
+        }
+        
+        console.log('Enviando plantilla con multimedia:', {
+          templateName,
+          mediaId,
+          headerParams,
+          template
+        });
+        
+        // Usar el servicio específico para plantillas con multimedia
+        const result = await templateService.sendTemplateWithMedia(
+          templateName, 
+          selectedContacts, 
+          mediaId,
+          {}, // parameters
+          headerParams // header_parameters con el enlace
+        );
+        alert(`Plantilla con multimedia enviada exitosamente a ${result.results.filter((r: any) => r.success).length} contactos`);
+      } else {
+        // Plantilla solo texto
+        const result = await templateService.sendTemplate(templateName, selectedContacts, {});
+        alert(`Plantilla enviada exitosamente a ${result.results.filter((r: any) => r.success).length} contactos`);
+      }
+      
+      onSendTemplate(selectedTemplate, selectedContacts);
+      setSelectedTemplate('');
+    } catch (err: any) {
+      console.error('Error:', err);
+      alert(err.message || 'Error al enviar la plantilla');
+    }
+  };
+
   return (
     <div className="template-panel">
         <div className="template-header">
@@ -273,41 +460,89 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                   {template.status === 'APPROVED' && (
                     <>
                       <span className="material-icons">check_circle</span>
-                      Aprobado
+                      APROBADO
                     </>
                   )}
                   {template.status === 'PENDING' && (
                     <>
                       <span className="material-icons">schedule</span>
-                      Pendiente
+                      PENDIENTE
                     </>
                   )}
                   {template.status === 'REJECTED' && (
                     <>
                       <span className="material-icons">cancel</span>
-                      Rechazado
+                      RECHAZADO
                     </>
                   )}
                   {template.status === 'DRAFT' && (
                     <>
                       <span className="material-icons">edit</span>
-                      Borrador
+                      BORRADOR
                     </>
                   )}
                 </span>
+                {/* Mostrar si la plantilla tiene medios */}
+                {(template.has_media || template.media_id || template.image_url) && (
+                  <span className="template-media-indicator">
+                    <span className="material-icons">
+                      {template.media_type === 'IMAGE' ? 'image' : 
+                       template.media_type === 'VIDEO' ? 'videocam' : 'description'}
+                    </span>
+                    {template.media_type === 'IMAGE' ? 'IMAGEN' : 
+                     template.media_type === 'VIDEO' ? 'VIDEO' : 'DOCUMENTO'}
+                  </span>
+                )}
               </div>
-              <div className="template-preview">{template.content}</div>
-              {template.footer && (
-                <div className="template-footer">
-                  {template.footer}
-                </div>
-              )}
+              
+              <div className="template-content">
+                {/* Mostrar información de multimedia si existe */}
+                {(template.has_media || template.media_type) && (
+                  <div className="template-media-info">
+                    <div className="media-indicator">
+                      <span className="material-icons">
+                        {template.media_type === 'IMAGE' ? 'image' : 
+                         template.media_type === 'VIDEO' ? 'videocam' : 'description'}
+                      </span>
+                      <span className="media-label">
+                        {template.media_type === 'IMAGE' ? 'IMAGEN' : 
+                         template.media_type === 'VIDEO' ? 'VIDEO' : 'DOCUMENTO'}
+                      </span>
+                    </div>
+                    {template.header_text && (
+                      <div className="header-text">
+                        <strong>Encabezado:</strong> {template.header_text}
+                      </div>
+                    )}
+                    {template.header_handle && template.media_type === 'IMAGE' && (
+                      <div className="template-media-preview">
+                        <img 
+                          src={Array.isArray(template.header_handle) ? template.header_handle[0] : template.header_handle}
+                          alt="Vista previa de la plantilla"
+                          onError={(e) => {
+                            // Si la imagen falla al cargar, ocultar el elemento
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p>{template.content}</p>
+                {template.footer && (
+                  <div className="template-footer">
+                    <small>{template.footer}</small>
+                  </div>
+                )}
+              </div>
+              
               {template.rejected_reason && (
                 <div className="rejection-reason">
                   <strong>Razón de rechazo:</strong> {template.rejected_reason}
                 </div>
               )}
             </div>
+            
             <div className="template-item-actions">
               <div className="template-menu">
                 <button
@@ -378,7 +613,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         </div>
         <button
           className="send-template-btn"
-          onClick={handleSendTemplate}
+          onClick={handleSendTemplateWithMedia}
           disabled={!selectedTemplate || selectedContacts.length === 0}
         >
           Enviar Plantilla
@@ -389,6 +624,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         <div className="modal-overlay">
           <div className="modal">
             <h4>Crear Nueva Plantilla</h4>
+            
             <div className="form-group">
               <label>Nombre:</label>
               <input
@@ -404,16 +640,103 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               <label>Categoría:</label>
               <select
                 value={newTemplate.category}
-                onChange={(e) =>
-                  setNewTemplate({ ...newTemplate, category: e.target.value })
-                }
+                onChange={(e) => {
+                  const category = e.target.value;
+                  setNewTemplate({ ...newTemplate, category });
+                  // Si la categoría no permite medios, cambiar a texto
+                  if (!categoryAllowsMedia(category)) {
+                    setTemplateType('text');
+                    handleClearMedia();
+                  }
+                }}
               >
-                <option value="UTILITY">UTILITY</option>
-                <option value="MARKETING">MARKETING</option>
-                <option value="TRANSACTIONAL">TRANSACTIONAL</option>
-                <option value="OTP">OTP</option>
+                <option value="UTILITY">UTILITY - Recordatorios y servicios</option>
+                <option value="MARKETING">MARKETING - Promociones y ofertas</option>
+                <option value="TRANSACTIONAL">TRANSACTIONAL - Confirmaciones y facturas</option>
+                <option value="OTP">OTP - Códigos de verificación (solo texto)</option>
               </select>
+              <div className="category-description">
+                {getCategoryDescription(newTemplate.category)}
+              </div>
             </div>
+
+            {/* Mostrar selector de tipo solo si la categoría permite medios */}
+            {categoryAllowsMedia(newTemplate.category) && (
+              <div className="template-type-selector">
+                <label>Tipo de Plantilla:</label>
+                <div className="template-type-buttons">
+                  <button
+                    className={`type-btn ${templateType === 'text' ? 'active' : ''}`}
+                    onClick={() => setTemplateType('text')}
+                  >
+                    📝 Solo Texto
+                  </button>
+                  <button
+                    className={`type-btn ${templateType === 'media' ? 'active' : ''}`}
+                    onClick={() => setTemplateType('media')}
+                  >
+                    🖼️ Con Imagen/Video
+                  </button>
+                </div>
+                <div className="type-description">
+                  {templateType === 'text' 
+                    ? 'Plantilla tradicional sin medios'
+                    : 'Plantilla con imagen o video en el encabezado'
+                  }
+                </div>
+              </div>
+            )}
+
+            {/* Mostrar mensaje si la categoría no permite medios */}
+            {!categoryAllowsMedia(newTemplate.category) && (
+              <div className="category-warning">
+                <div className="warning-icon">ℹ️</div>
+                <div className="warning-text">
+                  La categoría {newTemplate.category} no permite medios multimedia.
+                </div>
+              </div>
+            )}
+
+            {/* Información de ayuda sobre categorías */}
+            <div className="category-help">
+              <details>
+                <summary>ℹ️ Información sobre categorías</summary>
+                <div className="help-content">
+                  <div className="help-section">
+                    <h5>✅ Categorías con imágenes:</h5>
+                    <ul>
+                      <li><strong>UTILITY:</strong> Recordatorios y servicios informativos</li>
+                      <li><strong>MARKETING:</strong> Promociones y ofertas comerciales</li>
+                      <li><strong>TRANSACTIONAL:</strong> Confirmaciones de pedidos y facturas</li>
+                    </ul>
+                  </div>
+                  <div className="help-section">
+                    <h5>❌ Solo texto:</h5>
+                    <ul>
+                      <li><strong>OTP:</strong> Códigos de verificación</li>
+                    </ul>
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            {/* MediaSelector para plantillas con medios */}
+            {templateType === 'media' && categoryAllowsMedia(newTemplate.category) && (
+              <>
+                <MediaSelector
+                  onMediaSelected={handleMediaSelected}
+                  onImageUrlSelected={handleImageUrlSelected}
+                  onFileSelected={handleFileSelected}
+                  onClear={handleClearMedia}
+                  selectedMediaId={selectedMediaId}
+                  selectedMediaType={selectedMediaType}
+                  selectedImageUrl={selectedImageUrl}
+                  selectedFile={selectedFile || undefined}
+                  mode="template"
+                />
+              </>
+            )}
+
             <div className="form-group">
               <label>Mensaje:</label>
               <textarea
@@ -437,8 +760,21 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               />
             </div>
             <div className="modal-actions">
-              <button onClick={handleCreateTemplate}>Crear</button>
-              <button onClick={() => setShowCreateModal(false)}>Cancelar</button>
+              <button 
+                onClick={templateType === 'media' ? handleCreateTemplateWithMedia : handleCreateTemplate}
+                disabled={!newTemplate.name || !newTemplate.content || 
+                         (templateType === 'media' && categoryAllowsMedia(newTemplate.category) && 
+                          !selectedFile && !selectedImageUrl)}
+              >
+                {templateType === 'media' ? 'Crear con Medio' : 'Crear Plantilla'}
+              </button>
+              <button onClick={() => {
+                setShowCreateModal(false);
+                setTemplateType('text');
+                handleClearMedia();
+              }}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
