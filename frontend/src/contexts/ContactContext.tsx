@@ -55,7 +55,7 @@ export const ContactProvider: React.FC<ContactProviderProps> = ({ children }) =>
     websocketService.connect();
 
     // Configurar listener para actualizaciones de contactos
-    websocketService.onMessage((message) => {
+    const removeListener = websocketService.onMessage((message) => {
       if (message.type === 'contact_updated' && message.data) {
         console.log('🔄 Actualización de contacto recibida en ContactContext:', message.data);
         
@@ -64,9 +64,10 @@ export const ContactProvider: React.FC<ContactProviderProps> = ({ children }) =>
       }
     });
 
-    // Cleanup al desmontar
+    // Cleanup al desmontar - remover listener específico
     return () => {
       console.log('🧹 Limpiando WebSocket listener de ContactContext');
+      removeListener();
     };
   }, []);
 

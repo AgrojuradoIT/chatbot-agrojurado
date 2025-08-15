@@ -3,7 +3,10 @@ import './TemplatePanel.css';
 import { templateService } from '../services/templateService';
 import type { TemplateWithMediaRequest } from '../services/templateService';
 import { useContacts } from '../contexts/ContactContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getAuthHeaders } from '../utils/auth';
 import MediaSelector from './MediaSelector';
+import { TemplateProtected } from './ProtectedComponent';
 
 interface Template {
   id: string;
@@ -40,6 +43,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     return phone;
   };
   const { contacts } = useContacts();
+  const { user } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +125,16 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     category: 'UTILITY',
     footer: '',
   });
+
+  // Autocompletar el campo footer con el sector del usuario cuando esté disponible
+  useEffect(() => {
+    if (user && user.sector && showCreateModal) {
+      setNewTemplate(prev => ({
+        ...prev,
+        footer: user.sector
+      }));
+    }
+  }, [user, showCreateModal]);
 
   // Estados para plantillas con medios
   const [templateType, setTemplateType] = useState<'text' | 'media'>('text');
@@ -244,9 +258,20 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
             // Crear plantilla con archivo usando el nuevo endpoint
             const formData = new FormData();
             formData.append('file', selectedFile);
+            formData.append('name', newTemplate.name);
+            formData.append('content', newTemplate.content);
+            formData.append('category', newTemplate.category);
+            formData.append('media_type', selectedMediaType);
+            formData.append('language', 'es');
+            if (newTemplate.footer) {
+              formData.append('footer', newTemplate.footer);
+            }
             
-            const response = await fetch(`http://localhost:8000/api/templates/create-with-file?name=${encodeURIComponent(newTemplate.name)}&content=${encodeURIComponent(newTemplate.content)}&category=${newTemplate.category}&media_type=${selectedMediaType}&language=es${newTemplate.footer ? `&footer=${encodeURIComponent(newTemplate.footer)}` : ''}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/templates/create-with-file`, {
               method: 'POST',
+              headers: {
+                ...getAuthHeaders({}, false) // false = no incluir Content-Type para FormData
+              },
               body: formData,
             });
             
@@ -398,13 +423,15 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         <div className="template-header">
           <h3>Plantillas de Mensajes</h3>
           {!showArchivedTemplates && (
-            <button 
-              className="create-template-btn"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <span className="material-icons">add</span>
-              Agregar
-            </button>
+            <TemplateProtected action="create">
+              <button 
+                className="create-template-btn"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <span className="material-icons">add</span>
+                Agregar
+              </button>
+            </TemplateProtected>
           )}
         </div>
         
@@ -558,26 +585,28 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                 </button>
                 {showTemplateMenu === template.id && (
                   <div className="template-menu-dropdown">
-                    <button
-                      className="menu-item delete-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowTemplateMenu(null);
-                        if (showArchivedTemplates) {
-                          handleUnarchiveTemplate(template.id);
-                        } else {
-                          handleArchiveTemplate(template.id, template.name);
+                    <TemplateProtected action="delete">
+                      <button
+                        className="menu-item delete-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowTemplateMenu(null);
+                          if (showArchivedTemplates) {
+                            handleUnarchiveTemplate(template.id);
+                          } else {
+                            handleArchiveTemplate(template.id, template.name);
+                          }
+                        }}
+                        disabled={archivingTemplate === template.id}
+                      >
+                        {archivingTemplate === template.id 
+                          ? '⏳ Procesando...' 
+                          : showArchivedTemplates 
+                            ? '📤 Desarchivar' 
+                            : '📁 Archivar'
                         }
-                      }}
-                      disabled={archivingTemplate === template.id}
-                    >
-                      {archivingTemplate === template.id 
-                        ? '⏳ Procesando...' 
-                        : showArchivedTemplates 
-                          ? '📤 Desarchivar' 
-                          : '📁 Archivar'
-                      }
-                    </button>
+                      </button>
+                    </TemplateProtected>
                   </div>
                 )}
               </div>
@@ -611,13 +640,15 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         <div className="selection-info">
           Contactos seleccionados: {selectedContacts.length}
         </div>
-        <button
-          className="send-template-btn"
-          onClick={handleSendTemplateWithMedia}
-          disabled={!selectedTemplate || selectedContacts.length === 0}
-        >
-          Enviar Plantilla
-        </button>
+        <TemplateProtected action="use" fallback={<div className="no-permission-input">No tienes permisos para enviar plantillas</div>}>
+          <button
+            className="send-template-btn"
+            onClick={handleSendTemplateWithMedia}
+            disabled={!selectedTemplate || selectedContacts.length === 0}
+          >
+            Enviar Plantilla
+          </button>
+        </TemplateProtected>
       </div>
 
       {showCreateModal && (
@@ -675,7 +706,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                     className={`type-btn ${templateType === 'media' ? 'active' : ''}`}
                     onClick={() => setTemplateType('media')}
                   >
-                    🖼️ Con Imagen/Video
+                    🖼️ Con Multimedia
                   </button>
                 </div>
                 <div className="type-description">
@@ -749,14 +780,12 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               />
             </div>
             <div className="form-group">
-              <label>Pie de Página (Opcional):</label>
+              <label>Pie de Página:</label>
               <input
                 type="text"
                 value={newTemplate.footer}
-                onChange={(e) =>
-                  setNewTemplate({ ...newTemplate, footer: e.target.value })
-                }
-                placeholder="Pie de página del mensaje"
+                readOnly
+                placeholder="Sector del usuario (automático)"
               />
             </div>
             <div className="modal-actions">

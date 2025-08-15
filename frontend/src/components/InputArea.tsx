@@ -32,7 +32,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         rows={1}
       />
       <button onClick={handleSend} disabled={!inputValue.trim()}>
-        Enviar
+        <span className="material-icons">send</span>
       </button>
     </div>
   );

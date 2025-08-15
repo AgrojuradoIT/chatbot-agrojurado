@@ -411,12 +411,14 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
                   onClick={confirmImport}
                   disabled={contactPreview.filter(p => p.status === 'valid').length === 0}
                 >
+                  <span className="material-icons">cloud_upload</span>
                   Importar Contactos
                 </button>
                 <button 
                   className="cancel-btn"
                   onClick={() => setShowPreview(false)}
                 >
+                  <span className="material-icons">close</span>
                   Cancelar
                 </button>
               </div>
@@ -484,6 +486,7 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
         
         <div className="modal-actions">
           <button onClick={handleClose}>
+            <span className="material-icons">{importResult ? 'check_circle' : 'close'}</span>
             {importResult ? 'Cerrar' : 'Cancelar'}
           </button>
         </div>

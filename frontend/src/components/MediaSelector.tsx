@@ -54,7 +54,7 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('http://localhost:8000/api/media/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/media/upload`, {
         method: 'POST',
         body: formData,
       });

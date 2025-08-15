@@ -79,20 +79,23 @@ const InfiniteScroll: React.FC<InfiniteScrollProps> = ({
     const currentScrollHeight = container.scrollHeight;
     const heightDifference = currentScrollHeight - lastScrollHeight;
 
-    if (heightDifference > 0) {
-      console.log('🔒 Manteniendo posición:', { 
-        lastScrollTop, 
-        heightDifference, 
-        newPosition: lastScrollTop + heightDifference 
-      });
-      
-      // Usar requestAnimationFrame para asegurar que el DOM se ha actualizado
-      requestAnimationFrame(() => {
+    console.log('🔒 Manteniendo posición:', { 
+      lastScrollTop, 
+      heightDifference, 
+      newPosition: lastScrollTop + heightDifference 
+    });
+    
+    // Usar requestAnimationFrame para asegurar que el DOM se ha actualizado
+    requestAnimationFrame(() => {
+      // Solo ajustar scroll si hay diferencia de altura
+      if (heightDifference > 0) {
         container.scrollTop = lastScrollTop + heightDifference;
-        setIsLoadingOlder(false);
-        setShouldMaintainPosition(false);
-      });
-    }
+      }
+      
+      // SIEMPRE resetear el estado de carga, independientemente de heightDifference
+      setIsLoadingOlder(false);
+      setShouldMaintainPosition(false);
+    });
   }, [messages.length, shouldMaintainPosition, isLoadingOlder, lastScrollTop, lastScrollHeight]);
 
   // Scroll al final en carga inicial o cuando se agregan nuevos mensajes
@@ -125,7 +128,7 @@ const InfiniteScroll: React.FC<InfiniteScrollProps> = ({
 
   return (
     <div className="infinite-scroll-container" ref={containerRef}>
-      {hasMore && isNearTop() && (
+      {hasMore && messages.length > 0 && isNearTop() && (
         <div className="load-more-indicator">
           {isLoadingOlder ? (
             <div className="loading-more">

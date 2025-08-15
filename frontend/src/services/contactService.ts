@@ -1,3 +1,5 @@
+import { getAuthHeaders } from '../utils/auth';
+
 export interface Contact {
   phone_number: string;
   name: string;
@@ -17,11 +19,13 @@ export interface ContactUpdateRequest {
 }
 
 class ContactService {
-  private baseUrl = 'http://localhost:8000/api';
+  private baseUrl = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
   async getContacts(): Promise<Contact[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/contacts`);
+      const response = await fetch(`${this.baseUrl}/contacts`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al obtener contactos');
       }
@@ -37,9 +41,7 @@ class ContactService {
     try {
       const response = await fetch(`${this.baseUrl}/contacts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(contact),
       });
       
@@ -59,9 +61,7 @@ class ContactService {
     try {
       const response = await fetch(`${this.baseUrl}/contacts/bulk`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(contacts),
       });
       
@@ -81,9 +81,7 @@ class ContactService {
     try {
       const response = await fetch(`${this.baseUrl}/contacts/${phoneNumber}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(contact),
       });
       
@@ -103,6 +101,7 @@ class ContactService {
     try {
       const response = await fetch(`${this.baseUrl}/contacts/${phoneNumber}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       
       if (!response.ok) {
@@ -117,7 +116,9 @@ class ContactService {
 
   async getContact(phoneNumber: string): Promise<Contact> {
     try {
-      const response = await fetch(`${this.baseUrl}/contacts/${phoneNumber}`);
+      const response = await fetch(`${this.baseUrl}/contacts/${phoneNumber}`, {
+        headers: getAuthHeaders(),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();

@@ -6,9 +6,13 @@ import ChatPanel from './components/ChatPanel';
 import TemplatePanel from './components/TemplatePanel';
 import ContactManager from './components/ContactManager';
 import StatisticsDashboard from './components/StatisticsDashboard';
+import LoginPage from './components/LoginPage';
+import AuthCallback from './components/AuthCallback';
 import { messageService } from './services/messageService';
-import { websocketService } from './services/websocketService';
+import { websocketService, type WebSocketMessage } from './services/websocketService';
 import { ContactProvider } from './contexts/ContactContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProtectedComponent } from './components/ProtectedComponent';
 
 interface Message {
   id: string;
@@ -28,7 +32,9 @@ interface Chat {
   isOnline?: boolean;
 }
 
-function App() {
+// Componente principal del dashboard (protegido)
+function Dashboard() {
+  const { user, logout } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
@@ -36,11 +42,8 @@ function App() {
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
 
-
-  
   // Cache de mensajes por contacto
   const [messageCache, setMessageCache] = useState<Record<string, {
     messages: Message[];
@@ -48,12 +51,75 @@ function App() {
     lastLoaded: Date;
   }>>({});
 
-  // Limpiar WebSocket cuando el componente se desmonte
+  // Configurar WebSocket listener global para manejar mensajes
   useEffect(() => {
+    websocketService.connect();
+    
+    const removeListener = websocketService.onMessage((wsMessage: WebSocketMessage) => {
+      if (wsMessage.message && wsMessage.type === 'new_message') {
+        const messagePhoneNumber = wsMessage.message.phone_number;
+        
+        console.log('📨 Mensaje recibido de:', messagePhoneNumber, 'Chat actual:', selectedChat?.phone);
+        
+        const newMessage: Message = {
+          id: wsMessage.message.id || `ws_${Date.now()}`,
+          text: wsMessage.message.text,
+          sender: wsMessage.message.sender === 'user' ? 'bot' : 'user',
+          timestamp: new Date(wsMessage.message.timestamp || Date.now())
+        };
+        
+        // 1. SIEMPRE actualizar el caché si existe
+        if (messageCache[messagePhoneNumber]) {
+          const currentCache = messageCache[messagePhoneNumber];
+          const exists = currentCache.messages.some(msg => msg.id === newMessage.id);
+          
+          if (!exists) {
+            console.log('📝 Actualizando caché para:', messagePhoneNumber);
+            const updatedCacheMessages = [...currentCache.messages, newMessage];
+            setCachedMessages(messagePhoneNumber, updatedCacheMessages, currentCache.hasMore);
+          }
+        }
+        
+        // 2. Si es el chat actual, también actualizar la vista
+        if (selectedChat && messagePhoneNumber === selectedChat.phone) {
+          console.log('✅ Actualizando vista del chat actual');
+          setMessages(prev => {
+            const exists = prev.some(msg => msg.id === newMessage.id);
+            if (exists) {
+              console.log('⚠️ Mensaje duplicado ignorado en vista');
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
+          
+          // Auto-scroll si está cerca del final
+          setTimeout(() => {
+            if (isNearBottom()) {
+              scrollToBottom();
+            }
+          }, 50);
+        }
+      }
+    });
+
     return () => {
+      removeListener();
       websocketService.disconnect();
     };
-  }, []);
+  }, [selectedChat?.phone, messageCache]); // Dependencias necesarias
+
+  // Scroll automático solo cuando se selecciona un nuevo chat
+  useEffect(() => {
+    if (selectedChat && !isLoadingMessages) {
+      // Solo hacer scroll automático cuando se selecciona un chat nuevo
+      // NO cuando llegan mensajes nuevos (eso se maneja en el WebSocket listener)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottom();
+        }, 50);
+      });
+    }
+  }, [selectedChat?.id]); // Solo cuando cambia el chat seleccionado
 
   const handleSendMessage = async (text: string) => {
     if (!selectedChat) {
@@ -73,7 +139,7 @@ function App() {
       status: 'sending' // Estado inicial: enviando
     };
     
-    console.log('📤 Enviando mensaje:', messageId);
+    console.log(' Enviando mensaje:', messageId);
     setMessages(prev => [...prev, newMessage]);
 
     try {
@@ -104,7 +170,7 @@ function App() {
             ? { ...msg, status: 'sent' as const }
             : msg
         ));
-        console.log('✅ Mensaje enviado exitosamente:', messageId);
+        console.log(' Mensaje enviado exitosamente:', messageId);
       }
       // Si es exitoso, el WebSocket se encargará de mostrar el mensaje confirmado
     } catch (error) {
@@ -129,278 +195,155 @@ function App() {
   };
 
   const getCachedMessages = (phoneNumber: string) => {
-    return messageCache[phoneNumber];
+    return messageCache[phoneNumber]?.messages || [];
   };
-
-
 
   const scrollToBottom = () => {
-    const container = document.querySelector('.infinite-scroll-container');
-    if (container) {
-      requestAnimationFrame(() => {
-        container.scrollTop = container.scrollHeight;
-        console.log('📜 Scroll al final ejecutado');
-      });
+    const chatContainer = document.querySelector('.infinite-scroll-container');
+    if (chatContainer) {
+      console.log(' Haciendo scroll al final');
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  };
-
-  const isNearTop = () => {
-    const container = document.querySelector('.infinite-scroll-container');
-    if (container) {
-      return container.scrollTop < 200;
-    }
-    return false;
   };
 
   const isNearBottom = () => {
-    const container = document.querySelector('.infinite-scroll-container');
-    if (container) {
-      const { scrollTop, scrollHeight, clientHeight } = container as HTMLElement;
-      return scrollTop + clientHeight >= scrollHeight - 100;
+    const chatContainer = document.querySelector('.chat-messages');
+    if (chatContainer) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+      return scrollHeight - scrollTop - clientHeight < 100;
     }
     return true;
   };
 
   const setCachedMessages = (phoneNumber: string, messages: Message[], hasMore: boolean) => {
-    setMessageCache(prev => {
-      // Limpiar cache antiguo (más de 1 hora)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const cleanedCache = Object.fromEntries(
-        Object.entries(prev).filter(([_, data]) => 
-          data.lastLoaded > oneHourAgo
-        )
-      );
-      
-      // Eliminar duplicados antes de guardar
-      const uniqueMessages = messages.filter((message, index, self) => 
-        index === self.findIndex(m => m.id === message.id)
-      );
-      
-      return {
-        ...cleanedCache,
-        [phoneNumber]: {
-          messages: uniqueMessages,
-          hasMore,
-          lastLoaded: new Date()
-        }
-      };
-    });
+    setMessageCache(prev => ({
+      ...prev,
+      [phoneNumber]: {
+        messages,
+        hasMore,
+        lastLoaded: new Date()
+      }
+    }));
   };
 
   const handleSelectChat = async (chat: Chat) => {
-    console.log('👤 Chat seleccionado:', chat.name, chat.phone);
+    console.log(' Seleccionando chat:', chat.name, chat.phone);
+    
+    // Actualizar chat seleccionado
     setSelectedChat(chat);
     
+    // Verificar si hay mensajes en caché
+    const cachedMessages = getCachedMessages(chat.phone);
     
-    // Conectar al WebSocket general si no está conectado
-    websocketService.connect();
-    
-    // Cambiar el chat activo en el WebSocket
-    websocketService.setCurrentContact(chat.phone);
-    
-    // Verificar si hay mensajes en cache
-    const cached = getCachedMessages(chat.phone);
-    
-    if (cached && cached.messages.length > 0) {
-      // Usar mensajes del cache
-      console.log('📦 Usando mensajes del cache para:', chat.phone, 'Total:', cached.messages.length);
+    if (cachedMessages.length > 0) {
+      console.log(' Usando mensajes en caché:', cachedMessages.length);
+      setMessages(cachedMessages);
+      setHasMoreOlder(messageCache[chat.phone]?.hasMore || false);
       
-      // Verificar duplicados en cache
-      const uniqueCachedMessages = cached.messages.filter((message, index, self) => 
-        index === self.findIndex(m => m.id === message.id)
-      );
+      // Scroll al final será manejado por useEffect cuando cambien los mensajes
       
-      if (uniqueCachedMessages.length !== cached.messages.length) {
-        console.log('⚠️ Duplicados encontrados en cache, limpiando...');
-        setCachedMessages(chat.phone, uniqueCachedMessages, cached.hasMore);
-      }
-      
-              setMessages(uniqueCachedMessages);
-      setHasMoreOlder(cached.hasMore);
-      
-      // Hacer scroll al final después de cargar desde cache
-      scrollToBottom();
-      console.log('✅ Mensajes cargados desde cache y scroll al final');
-          } else {
-        // Cargar mensajes del servidor
-        console.log('🔄 Cargando mensajes del servidor para:', chat.phone);
-      setMessages([]); // Limpiar mensajes para resetear el scroll
-      setHasMoreOlder(false); // Resetear estado de carga
+      return;
     }
     
-    // Configurar callback para nuevos mensajes
-    websocketService.onMessage((data) => {
-      if (data.type === 'new_message' && data.message) {
-        console.log('📨 Nuevo mensaje recibido:', data.message.text.substring(0, 50) + '...');
-        const newMessage: Message = {
-          id: data.message.id,
-          text: data.message.text,
-          sender: (data.message.sender === 'user' ? 'bot' : 'user') as 'user' | 'bot',
-          timestamp: new Date(data.message.timestamp),
-          // Corregir estados:
-          // - Mensajes de 'user' (recibidos) = sin estado (undefined)
-          // - Mensajes de 'bot' (enviados) = usar el status real
-          status: data.message.sender === 'user' ? undefined : (data.message.status as 'sending' | 'sent' | 'delivered' | 'error')
-        };
-        
-        setMessages(prev => {
-          // Evitar duplicados - verificar por ID y también por contenido + timestamp
-          const isDuplicate = prev.some(msg => 
-            msg.id === newMessage.id || 
-            (msg.text === newMessage.text && 
-             Math.abs(msg.timestamp.getTime() - newMessage.timestamp.getTime()) < 5000) // 5 segundos de tolerancia
-          );
-          
-          if (isDuplicate) {
-            console.log('🚫 Mensaje duplicado ignorado:', newMessage.id);
-            return prev;
-          }
-          
-          console.log('✅ Agregando mensaje nuevo:', newMessage.id);
-          const updatedMessages = [...prev, newMessage];
-          
-          // Actualizar cache
-          if (selectedChat) {
-            setCachedMessages(selectedChat.phone, updatedMessages, hasMoreOlder);
-          }
-          
-          // Solo hacer scroll si estamos cerca del final
-          if (isNearBottom()) {
-            requestAnimationFrame(() => {
-              scrollToBottom();
-            });
-          }
-          
-          return updatedMessages;
-        });
-        
-
-      }
-    });
+    // Si no hay caché, cargar mensajes
+    setIsLoadingMessages(true);
+    // Limpiar mensajes del chat anterior para evitar confusión
+    setMessages([]);
+    setHasMoreOlder(false);
     
-    // Cargar mensajes recientes para este contacto
     try {
-      setIsLoadingMessages(true);
-      const recentMessages = await messageService.getRecentMessages(chat.phone, 50); // Cargar los 50 más recientes
-      const formattedMessages = recentMessages.map(msg => ({
-        id: msg.id,
-        text: msg.text,
-        sender: (msg.sender === 'user' ? 'bot' : 'user') as 'user' | 'bot',
-        timestamp: new Date(msg.timestamp),
-        status: msg.sender === 'user' ? undefined : (msg.status as 'sending' | 'sent' | 'delivered' | 'error')
-      }));
-      // Eliminar duplicados antes de establecer
-      const uniqueMessages = formattedMessages.filter((message, index, self) => 
-        index === self.findIndex(m => m.id === message.id)
-      );
+      console.log(' Cargando mensajes para:', chat.phone);
       
-      setMessages(uniqueMessages);
+      const response = await messageService.getMessages(chat.phone, 1, 50);
       
-      // Verificar si hay más mensajes antiguos disponibles
-      const hasMore = uniqueMessages.length >= 50; // Si hay 50+ mensajes, probablemente hay más
-      setHasMoreOlder(hasMore);
-      
-      // Guardar en cache
-      setCachedMessages(chat.phone, uniqueMessages, hasMore);
-      
-      // Si no hay mensajes, mostrar chat vacío
-      if (uniqueMessages.length === 0) {
-        console.log('📝 No hay mensajes, mostrando chat vacío');
+      if (response && response.messages) {
+        console.log(' Mensajes cargados:', response.messages.length);
+        
+        const formattedMessages = response.messages.map(msg => ({
+          id: msg.id,
+          text: msg.text,
+          sender: (msg.sender === 'user' ? 'bot' : 'user') as 'user' | 'bot',
+          timestamp: new Date(msg.timestamp)
+        }));
+        
+        // El backend ya envía los mensajes en orden cronológico correcto (antiguos primero, recientes después)
+        const sortedMessages = formattedMessages;
+        
+        // Limpiar mensajes anteriores y establecer los nuevos
+        setMessages(sortedMessages);
+        setHasMoreOlder(response.pagination.has_next);
+        
+        // Guardar en caché
+        setCachedMessages(chat.phone, sortedMessages, response.pagination.has_next);
+        
+        // Conectar WebSocket
+        websocketService.connect();
+        
+        // Scroll al final será manejado por useEffect cuando cambien los mensajes
+        
+      } else {
+        console.log(' No se pudieron cargar los mensajes');
         setMessages([]);
         setHasMoreOlder(false);
-        setCachedMessages(chat.phone, [], false);
-      }
-      
-
-      
-      // Hacer scroll al final después de cargar del servidor (solo si no estamos cerca del inicio)
-      if (!isNearTop()) {
-        scrollToBottom();
       }
     } catch (error) {
-      console.error('Error al cargar mensajes:', error);
-      const errorMessage = {
-        id: 'error',
-        text: 'Error al cargar el historial de mensajes. Intenta nuevamente.',
-        sender: 'bot' as const,
-        timestamp: new Date(),
-      };
-      setMessages([errorMessage]);
+      console.error(' Error cargando mensajes:', error);
+      setMessages([]);
+      setHasMoreOlder(false);
     } finally {
       setIsLoadingMessages(false);
-
     }
   };
 
   const handleToggleChatSelection = (chatId: string) => {
-    setSelectedChats((prev) =>
-      prev.includes(chatId)
-        ? prev.filter((id) => id !== chatId)
+    setSelectedChats(prev => 
+      prev.includes(chatId) 
+        ? prev.filter(id => id !== chatId)
         : [...prev, chatId]
     );
   };
 
-
-
-  const handleSendTemplate = async (templateId: string, contactIds: string[]) => {
-    console.log(`Enviando plantilla ${templateId} a ${contactIds.length} contactos`);
-    // El WebSocket se encargará de mostrar los mensajes de plantilla automáticamente
+  const handleSendTemplate = (templateId: string, contactIds: string[]) => {
+    // Implementar envío de plantilla
+    console.log('Enviando plantilla:', templateId, 'a contactos:', contactIds);
   };
 
   const handleContactUpdate = () => {
-    // Recargar la lista de contactos cuando se actualice
-    console.log('Contactos actualizados');
+    // Implementar actualización de contactos
+    console.log('Actualizando contactos');
   };
 
   const handleSelectContactFromManager = (contact: any) => {
-    // Convertir el contacto del ContactManager a formato Chat
     const chat: Chat = {
       id: contact.phone_number,
-      name: contact.name,
+      name: contact.name || contact.phone_number,
       phone: contact.phone_number,
-      lastMessage: contact.last_interaction || undefined,
+      lastMessage: contact.last_message,
       lastMessageTime: contact.last_interaction ? new Date(contact.last_interaction) : undefined,
-      unreadCount: 0,
       isOnline: contact.is_active
     };
     
-    // Seleccionar el chat
     handleSelectChat(chat);
-    
-    // Cambiar a la pestaña de chat
     setActiveTab('chat');
   };
 
   const handleLoadMore = async () => {
-    console.log('🚀 handleLoadMore llamado');
-    
     if (!selectedChat || isLoadingMore || !hasMoreOlder) {
-      console.log('❌ No se puede cargar más mensajes:', { 
-        hasChat: !!selectedChat, 
-        isLoading: isLoadingMore, 
-        hasMoreOlder 
-      });
       return;
     }
     
+    console.log(' Cargando más mensajes antiguos...');
+    setIsLoadingMore(true);
+    
     try {
-      setIsLoadingMore(true);
+      const currentPage = Math.floor(messages.length / 50) + 1;
+      const response = await messageService.getMessages(selectedChat.phone, currentPage + 1, 50);
       
-      // Obtener el timestamp del mensaje más antiguo actual
-      const oldestMessage = messages[0];
-      if (!oldestMessage) {
-        console.log('📭 No hay mensajes para cargar más antiguos');
+      if (!response || !response.messages) {
+        console.log(' No hay más mensajes para cargar');
         setHasMoreOlder(false);
         return;
       }
-      
-      console.log('Cargando mensajes más antiguos que:', oldestMessage.timestamp.toISOString());
-      
-      const response = await messageService.getOlderMessages(
-        selectedChat.phone, 
-        oldestMessage.timestamp.toISOString(), 
-        50
-      );
       
       const formattedMessages = response.messages.map(msg => ({
         id: msg.id,
@@ -409,31 +352,38 @@ function App() {
         timestamp: new Date(msg.timestamp)
       }));
       
-      console.log('Mensajes más antiguos cargados:', formattedMessages.length);
+      // El backend ya envía los mensajes en orden cronológico correcto
+      const sortedOlderMessages = formattedMessages;
+      
+      console.log('Mensajes más antiguos cargados:', sortedOlderMessages.length);
       
       // Agregar mensajes antiguos al inicio, evitando duplicados
       const existingIds = new Set(messages.map(msg => msg.id));
-      const newMessages = formattedMessages.filter(msg => !existingIds.has(msg.id));
+      const newMessages = sortedOlderMessages.filter(msg => !existingIds.has(msg.id));
       const updatedMessages = [...newMessages, ...messages];
       
-      console.log(`📚 Agregando ${newMessages.length} mensajes nuevos de ${formattedMessages.length} cargados`);
+      console.log(` Agregando ${newMessages.length} mensajes nuevos de ${formattedMessages.length} cargados`);
       
       setMessages(updatedMessages);
-      setHasMoreOlder(response.hasMore);
+      setHasMoreOlder(response.pagination.has_next);
       
       // Actualizar cache
       if (selectedChat) {
-        setCachedMessages(selectedChat.phone, updatedMessages, response.hasMore);
+        setCachedMessages(selectedChat.phone, updatedMessages, response.pagination.has_next);
       }
       
-      console.log('📚 Mensajes antiguos cargados, posición mantenida');
+      console.log(' Mensajes antiguos cargados, posición mantenida');
     } catch (error) {
-      console.error('❌ Error al cargar más mensajes:', error);
+      console.error(' Error al cargar más mensajes:', error);
       // Si hay error, asumir que no hay más mensajes
       setHasMoreOlder(false);
     } finally {
       setIsLoadingMore(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -444,30 +394,44 @@ function App() {
             <h1>Chatbot Agrojurado</h1>
           </div>
           <div className="tab-buttons">
-            <button 
-              className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chat')}
-            >
-              CHAT
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
-              onClick={() => setActiveTab('templates')}
-            >
-              PLANTILLAS
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('contacts')}
-            >
-              CONTACTOS
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
-              onClick={() => setActiveTab('statistics')}
-            >
-              ESTADÍSTICAS
-            </button>
+            <ProtectedComponent permissions={['chatbot.messages.view', 'chatbot.messages.send.individual', 'chatbot.messages.send.massive']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chat')}
+              >
+                CHAT
+              </button>
+            </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.templates.create', 'chatbot.templates.edit', 'chatbot.templates.delete', 'chatbot.templates.use']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+                onClick={() => setActiveTab('templates')}
+              >
+                PLANTILLAS
+              </button>
+            </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.contacts.view', 'chatbot.contacts.manage']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
+                onClick={() => setActiveTab('contacts')}
+              >
+                CONTACTOS
+              </button>
+            </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
+                onClick={() => setActiveTab('statistics')}
+              >
+                ESTADÍSTICAS
+              </button>
+            </ProtectedComponent>
+            <div className="user-info">
+              <span>{user?.name}</span>
+              <button className="logout-btn" onClick={handleLogout}>
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
         <div className="App-content">
@@ -493,33 +457,84 @@ function App() {
                 isLoadingMore={isLoadingMore}
                 selectedChat={selectedChat}
               />
-              <InputArea onSendMessage={handleSendMessage} />
+              <ProtectedComponent permissions={['chatbot.messages.send.individual']} fallback={<div className="no-permission-input">No tienes permisos para enviar mensajes</div>}>
+                <InputArea onSendMessage={handleSendMessage} />
+              </ProtectedComponent>
             </div>
           )}
           
           {/* Paneles adicionales según la pestaña activa */}
           {activeTab === 'templates' && (
-            <TemplatePanel
-              onSendTemplate={handleSendTemplate}
-            />
+            <ProtectedComponent permissions={['chatbot.templates.create', 'chatbot.templates.edit', 'chatbot.templates.delete', 'chatbot.templates.use']} fallback={<div className="no-permission">No tienes permisos para acceder a las plantillas</div>}>
+              <TemplatePanel
+                onSendTemplate={handleSendTemplate}
+              />
+            </ProtectedComponent>
           )}
           
           {activeTab === 'contacts' && (
-            <ContactManager
-              onContactUpdate={handleContactUpdate}
-              onSelectChat={handleSelectContactFromManager}
-            />
+            <ProtectedComponent permissions={['chatbot.contacts.view', 'chatbot.contacts.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los contactos</div>}>
+              <ContactManager
+                onContactUpdate={handleContactUpdate}
+                onSelectChat={handleSelectContactFromManager}
+              />
+            </ProtectedComponent>
           )}
           
           {activeTab === 'statistics' && (
-            <StatisticsDashboard
-              isVisible={true}
-            />
+            <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a las estadísticas</div>}>
+              <StatisticsDashboard
+                isVisible={true}
+              />
+            </ProtectedComponent>
           )}
         </div>
       </div>
     </ContactProvider>
   );
+}
+
+// Componente principal de la aplicación
+function App() {
+  const isCallback = window.location.pathname === '/auth/callback';
+  
+  if (isCallback) {
+    return (
+      <AuthProvider>
+        <AuthCallback />
+      </AuthProvider>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+// Componente que maneja el estado de autenticación
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-content">
+          <div className="loading-logo"></div>
+          <h2 className="loading-title">Chatbot Agrojurado</h2>
+          <div className="loading-spinner"></div>
+          <p>Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <Dashboard />;
 }
 
 export default App

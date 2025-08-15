@@ -1,3 +1,8 @@
+import { getAuthHeaders } from '../utils/auth';
+
+// Configuración de la API
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export interface Message {
   id: string;
   text: string;
@@ -23,7 +28,9 @@ export interface MessagesResponse {
 export const messageService = {
   async getMessages(phoneNumber: string, page: number = 1, limit: number = 50): Promise<MessagesResponse> {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/messages/${phoneNumber}?page=${page}&limit=${limit}`);
+      const response = await fetch(`${API_BASE_URL}/api/messages/${phoneNumber}?page=${page}&limit=${limit}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar mensajes');
       }
@@ -37,7 +44,9 @@ export const messageService = {
 
   async getRecentMessages(phoneNumber: string, limit: number = 20): Promise<Message[]> {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/messages/${phoneNumber}/recent?limit=${limit}`);
+      const response = await fetch(`${API_BASE_URL}/api/messages/${phoneNumber}/recent?limit=${limit}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar mensajes recientes');
       }
@@ -51,7 +60,9 @@ export const messageService = {
 
   async getOlderMessages(phoneNumber: string, beforeTimestamp: string, limit: number = 50): Promise<{messages: Message[], hasMore: boolean}> {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/messages/${phoneNumber}/older?before_timestamp=${beforeTimestamp}&limit=${limit}`);
+      const response = await fetch(`${API_BASE_URL}/api/messages/${phoneNumber}/older?before_timestamp=${beforeTimestamp}&limit=${limit}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar mensajes más antiguos');
       }
@@ -65,11 +76,9 @@ export const messageService = {
 
   async sendMessage(phoneNumber: string, message: string): Promise<boolean> {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/messages/send', {
+      const response = await fetch(`${API_BASE_URL}/api/messages/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           phone_number: phoneNumber,
           message: message
@@ -90,7 +99,9 @@ export const messageService = {
 
   async getStatistics(period: string = '30d'): Promise<any> {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/statistics?period=${period}`);
+      const response = await fetch(`${API_BASE_URL}/api/statistics?period=${period}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar estadísticas');
       }
@@ -106,6 +117,22 @@ export const messageService = {
         total_sent: 0,
         total_received: 0
       };
+    }
+  },
+
+  async getChatList(): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/messages/chats`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error('Error al cargar lista de chats');
+      }
+      const data = await response.json();
+      return data.chats;
+    } catch (error) {
+      console.error('Error fetching chat list:', error);
+      return [];
     }
   }
 };

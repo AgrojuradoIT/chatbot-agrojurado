@@ -1,3 +1,16 @@
+// Configuración de la API
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Convertir URL HTTP/HTTPS a WebSocket
+const getWebSocketUrl = (): string => {
+  // Convertir HTTP a WS y HTTPS a WSS
+  const baseUrl = API_BASE_URL
+    .replace(/^http:/, 'ws:')
+    .replace(/^https:/, 'wss:');
+    
+  return `${baseUrl}/ws`;
+};
+
 export interface WebSocketMessage {
   type: 'new_message' | 'template_updated' | 'contact_updated' | 'stats_updated';
   message?: {
@@ -20,11 +33,10 @@ export class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
   private reconnectDelay = 2000;
-  private onMessageCallback: ((message: WebSocketMessage) => void) | null = null;
+  private messageListeners: ((message: WebSocketMessage) => void)[] = [];
   private connectionTimeout: number | null = null;
   private isConnecting = false;
   private isDisconnecting = false;
-  private currentContact: string | null = null;
 
   connect() {
     // Si ya estamos conectados, no hacer nada
@@ -72,8 +84,10 @@ export class WebSocketService {
   }
 
   private _createConnection() {
-    // Conectar al WebSocket general (sin número específico)
-    this.ws = new WebSocket(`ws://localhost:8000/ws`);
+    // Conectar al WebSocket general usando la URL configurada
+    const wsUrl = getWebSocketUrl();
+    console.log('🔌 Conectando a:', wsUrl);
+    this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
       console.log('✅ WebSocket general conectado');
@@ -90,20 +104,14 @@ export class WebSocketService {
         if (data.type === 'new_message' && data.message) {
           console.log('📨 Mensaje recibido para:', data.message.phone_number);
           
-          // Solo procesar mensajes del contacto actual
-          if (this.currentContact && data.message.phone_number === this.currentContact) {
-            if (this.onMessageCallback) {
-              this.onMessageCallback(data);
-            }
-          } else {
-            console.log('📭 Mensaje ignorado - contacto diferente:', data.message.phone_number);
-          }
+          // SIEMPRE notificar a todos los listeners sobre mensajes nuevos
+          // Los listeners individuales decidirán cómo procesarlos
+          this.notifyListeners(data);
+          
         } else if (data.type === 'template_updated' || data.type === 'contact_updated' || data.type === 'stats_updated') {
           console.log('🔄 Actualización recibida:', data.type, data.data);
-          // Procesar actualizaciones globales
-          if (this.onMessageCallback) {
-            this.onMessageCallback(data);
-          }
+          // Procesar actualizaciones globales - notificar a todos los listeners
+          this.notifyListeners(data);
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);
@@ -146,20 +154,36 @@ export class WebSocketService {
     }
   }
 
-  // Cambiar contacto activo (sin reconectar)
-  setCurrentContact(phoneNumber: string) {
-    console.log('👤 Cambiando contacto activo a:', phoneNumber);
-    this.currentContact = phoneNumber;
+  // Notificar a todos los listeners registrados
+  private notifyListeners(message: WebSocketMessage) {
+    this.messageListeners.forEach(listener => {
+      try {
+        listener(message);
+      } catch (error) {
+        console.error('❌ Error en listener de WebSocket:', error);
+      }
+    });
   }
 
+  // Agregar un listener para mensajes WebSocket
   onMessage(callback: (message: WebSocketMessage) => void) {
-    this.onMessageCallback = callback;
+    this.messageListeners.push(callback);
+    console.log(`📡 Listener agregado. Total listeners: ${this.messageListeners.length}`);
+    
+    // Retornar función para remover el listener
+    return () => {
+      const index = this.messageListeners.indexOf(callback);
+      if (index > -1) {
+        this.messageListeners.splice(index, 1);
+        console.log(`🗑️ Listener removido. Total listeners: ${this.messageListeners.length}`);
+      }
+    };
   }
 
   disconnect() {
     console.log('🛑 Desconectando WebSocket manualmente');
     this.isDisconnecting = true;
-    this.currentContact = null;
+
     this.reconnectAttempts = 0;
     
     if (this.connectionTimeout) {

@@ -36,18 +36,18 @@ DB_PORT = os.getenv("DB_PORT", "3306")  # Puerto por defecto es útil mantener
 
 # URL de conexión (maneja contraseña vacía para desarrollo local)
 if DB_PASSWORD:
-    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 else:
-    DATABASE_URL = f"mysql+pymysql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def check_dependencies():
     """Verifica que las dependencias necesarias estén instaladas"""
     try:
-        import pymysql
-        print("✅ PyMySQL está instalado")
+        import mysql.connector
+        print("✅ mysql-connector-python está instalado")
     except ImportError:
-        print("❌ Error: PyMySQL no está instalado")
-        print("Instala con: pip install pymysql")
+        print("❌ Error: mysql-connector-python no está instalado")
+        print("Instala con: pip install mysql-connector-python")
         sys.exit(1)
 
 def create_database_if_not_exists():
@@ -55,11 +55,11 @@ def create_database_if_not_exists():
     try:
         # Conectar sin especificar base de datos (maneja contraseña vacía)
         if DB_PASSWORD:
-            engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}")
+            engine = create_engine(f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}")
         else:
-            engine = create_engine(f"mysql+pymysql://{DB_USER}@{DB_HOST}:{DB_PORT}")
+            engine = create_engine(f"mysql+mysqlconnector://{DB_USER}@{DB_HOST}:{DB_PORT}")
     
-    with engine.connect() as conn:
+        with engine.connect() as conn:
             # Crear base de datos si no existe
             conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
             conn.commit()
@@ -220,13 +220,13 @@ def create_messages_table(engine):
                 for col_name, col_type in missing_columns:
                     if col_name == 'status':
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} VARCHAR(20) DEFAULT 'sent';"
-            else:
+                    else:
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
                     
                     conn.execute(text(add_column_sql))
                 conn.commit()
             print(f"✅ Tabla '{table_name}' actualizada exitosamente")
-            else:
+        else:
             print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
         
         # Crear índices adicionales
@@ -363,7 +363,7 @@ def main():
     except SQLAlchemyError as e:
         print(f"❌ Error durante la actualización: {e}")
         sys.exit(1)
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Error inesperado: {e}")
         sys.exit(1)
 

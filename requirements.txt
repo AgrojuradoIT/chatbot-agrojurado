@@ -10,3 +10,6 @@ pydantic
 websockets
 python-multipart
 alembic
+python-jose[cryptography]
+python-multipart
+aiofiles

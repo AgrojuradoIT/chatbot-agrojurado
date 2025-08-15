@@ -1,3 +1,8 @@
+import { getAuthHeaders } from '../utils/auth';
+
+// Configuración de la API
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export interface Template {
   id: string;
   name: string;
@@ -46,7 +51,9 @@ export interface MediaUploadResponse {
 export const templateService = {
   async getTemplates(): Promise<Template[]> {
     try {
-      const response = await fetch('http://localhost:8000/api/templates');
+      const response = await fetch(`${API_BASE_URL}/api/templates`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar plantillas');
       }
@@ -103,7 +110,9 @@ export const templateService = {
 
   async getArchivedTemplates(): Promise<Template[]> {
     try {
-      const response = await fetch('http://localhost:8000/api/templates/archived');
+      const response = await fetch(`${API_BASE_URL}/api/templates/archived`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error al cargar plantillas archivadas');
       }
@@ -118,8 +127,9 @@ export const templateService = {
 
   async archiveTemplate(templateId: string): Promise<boolean> {
     try {
-      const response = await fetch(`http://localhost:8000/api/templates/${encodeURIComponent(templateId)}/archive`, {
+      const response = await fetch(`${API_BASE_URL}/api/templates/${encodeURIComponent(templateId)}/archive`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       
       if (!response.ok) {
@@ -136,8 +146,9 @@ export const templateService = {
 
   async unarchiveTemplate(templateId: string): Promise<boolean> {
     try {
-      const response = await fetch(`http://localhost:8000/api/templates/${encodeURIComponent(templateId)}/unarchive`, {
+      const response = await fetch(`${API_BASE_URL}/api/templates/${encodeURIComponent(templateId)}/unarchive`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       
       if (!response.ok) {
@@ -154,11 +165,9 @@ export const templateService = {
 
   async createTemplate(template: TemplateRequest): Promise<any> {
     try {
-      const response = await fetch('http://localhost:8000/api/templates', {
+      const response = await fetch(`${API_BASE_URL}/api/templates`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(template),
       });
       
@@ -176,8 +185,9 @@ export const templateService = {
 
   async deleteTemplate(templateName: string): Promise<boolean> {
     try {
-      const response = await fetch(`http://localhost:8000/api/templates/${encodeURIComponent(templateName)}`, {
+      const response = await fetch(`${API_BASE_URL}/api/templates/${encodeURIComponent(templateName)}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       
       if (!response.ok) {
@@ -194,11 +204,9 @@ export const templateService = {
 
   async sendTemplate(templateName: string, phoneNumbers: string[], parameters?: any): Promise<any> {
     try {
-      const response = await fetch('http://localhost:8000/api/templates/send', {
+      const response = await fetch(`${API_BASE_URL}/api/templates/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           template_name: templateName,
           phone_numbers: phoneNumbers,
@@ -223,8 +231,9 @@ export const templateService = {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('http://localhost:8000/api/media/upload', {
+      const response = await fetch(`${API_BASE_URL}/api/media/upload`, {
         method: 'POST',
+        headers: getAuthHeaders({}, false), // Sin Content-Type para FormData
         body: formData,
       });
       
@@ -242,11 +251,9 @@ export const templateService = {
 
   async uploadMediaFromBase64(base64Data: string, filename: string, fileType: string): Promise<MediaUploadResponse> {
     try {
-      const response = await fetch('http://localhost:8000/api/media/upload-base64', {
+      const response = await fetch(`${API_BASE_URL}/api/media/upload-base64`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           base64_data: base64Data,
           filename: filename,
@@ -271,8 +278,9 @@ export const templateService = {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('http://localhost:8000/api/media/upload-file', {
+      const response = await fetch(`${API_BASE_URL}/api/media/upload-file`, {
         method: 'POST',
+        headers: getAuthHeaders({}, false), // Sin Content-Type para FormData
         body: formData,
       });
       
@@ -305,11 +313,9 @@ export const templateService = {
       
       console.log('Sending template with media:', template);
       
-      const response = await fetch('http://localhost:8000/api/templates/with-media', {
+      const response = await fetch(`${API_BASE_URL}/api/templates/with-media`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(template),
       });
       
@@ -356,9 +362,10 @@ export const templateService = {
     headerParameters?: any
   ): Promise<any> {
     try {
-      const response = await fetch('http://localhost:8000/api/templates/send-with-media', {
+      const response = await fetch(`${API_BASE_URL}/api/templates/send-with-media`, {
         method: 'POST',
         headers: {
+          ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

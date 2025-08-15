@@ -4,6 +4,7 @@ import type { Contact, ContactCreateRequest } from '../services/contactService';
 import ContactImport from './ContactImport';
 import './ContactImport.css';
 import { useContacts } from '../contexts/ContactContext';
+import { ContactProtected } from './ProtectedComponent';
 
 
 interface ContactManagerProps {
@@ -109,21 +110,25 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       <div className="contacts-header">
         <h3>Contactos</h3>
         <div className="contacts-actions">
-          <button 
-            className="import-contact-btn"
-            onClick={() => setShowImportModal(true)}
-            title="Importar contactos desde Excel"
-          >
-            <span className="material-icons">upload_file</span>
-            Importar
-          </button>
-          <button 
-            className="create-contact-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <span className="material-icons">add</span>
-            Agregar
-          </button>
+          <ContactProtected action="manage">
+            <button 
+              className="import-contact-btn"
+              onClick={() => setShowImportModal(true)}
+              title="Importar contactos desde Excel"
+            >
+              <span className="material-icons">upload_file</span>
+              Importar
+            </button>
+          </ContactProtected>
+          <ContactProtected action="manage">
+            <button 
+              className="create-contact-btn"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <span className="material-icons">add</span>
+              Agregar
+            </button>
+          </ContactProtected>
         </div>
       </div>
 
@@ -159,20 +164,24 @@ const ContactManager: React.FC<ContactManagerProps> = ({
               </div>
             </div>
             <div className="contact-actions" onClick={(e) => e.stopPropagation()}>
-              <button 
-                className="edit-btn"
-                onClick={() => openEditModal(contact)}
-                title="Editar contacto"
-              >
-                <span className="material-icons">edit</span>
-              </button>
-              <button 
-                className="delete-btn"
-                onClick={() => handleDeleteContact(contact.phone_number)}
-                title="Eliminar contacto"
-              >
-                <span className="material-icons">delete</span>
-              </button>
+              <ContactProtected action="manage">
+                <button 
+                  className="edit-btn"
+                  onClick={() => openEditModal(contact)}
+                  title="Editar contacto"
+                >
+                  <span className="material-icons">edit</span>
+                </button>
+              </ContactProtected>
+              <ContactProtected action="manage">
+                <button 
+                  className="delete-btn"
+                  onClick={() => handleDeleteContact(contact.phone_number)}
+                  title="Eliminar contacto"
+                >
+                  <span className="material-icons">delete</span>
+                </button>
+              </ContactProtected>
             </div>
           </div>
         ))}

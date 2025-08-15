@@ -1,6 +1,6 @@
 # 🤖 Chatbot WhatsApp - Agropecuaria Juradó S.A.S
 
-Un sistema completo de chatbot para WhatsApp que permite la gestión de contactos, envío de mensajes, plantillas y comunicación en tiempo real con integración de IA.
+Un sistema completo de chatbot para WhatsApp que permite la gestión de contactos, envío de mensajes, plantillas y comunicación en tiempo real con autenticación OAuth.
 
 ## 📋 Tabla de Contenidos
 
@@ -25,8 +25,9 @@ Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para 
 - **Base de Datos**: MySQL con SQLAlchemy para almacenar contactos, mensajes y plantillas
 - **WebSocket**: Comunicación en tiempo real entre frontend y backend
 - **Integración WhatsApp**: Webhook para recibir y enviar mensajes automáticamente
-- **IA Integrada**: Respuestas automáticas usando Google Gemini AI
+- **Autenticación OAuth**: Sistema de login seguro con JWT
 - **Gestión de Media**: Subida y gestión de archivos multimedia
+- **Estadísticas**: Dashboard con métricas del sistema
 
 ## ✨ Características
 
@@ -34,33 +35,37 @@ Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para 
 - ✅ API REST completa para gestión de contactos y mensajes
 - ✅ Sistema avanzado de plantillas de WhatsApp con media
 - ✅ Webhook para mensajes entrantes con procesamiento automático
-- ✅ Respuestas automáticas con IA (Google Gemini)
 - ✅ WebSocket para comunicación en tiempo real
-- ✅ Base de datos MySQL con SQLAlchemy y Alembic
+- ✅ Base de datos MySQL con SQLAlchemy
 - ✅ Gestión de archivos multimedia (imágenes, documentos, audio)
 - ✅ Sistema de estadísticas y métricas
 - ✅ Importación masiva de contactos
 - ✅ Gestión de plantillas archivadas
+- ✅ Autenticación OAuth con JWT
+- ✅ Sistema de permisos y middleware de autenticación
 
 ### 🎨 Frontend (React + TypeScript + Vite)
 - ✅ Interfaz moderna y responsiva con diseño adaptativo
 - ✅ Chat en tiempo real con WebSocket
 - ✅ Panel de gestión de contactos con importación masiva
 - ✅ Editor avanzado de plantillas con soporte multimedia
-- ✅ Dashboard de estadísticas con gráficos interactivos
+- ✅ Dashboard de estadísticas con gráficos interactivos (Recharts)
 - ✅ Scroll infinito para mensajes
 - ✅ Selector de medios para plantillas
 - ✅ Gestión de estado con Context API
 - ✅ Componentes reutilizables y modulares
+- ✅ Sistema de autenticación con OAuth
+- ✅ Importación de contactos desde Excel (XLSX)
 
 ### 🤖 Funcionalidades del Chatbot
-- ✅ Respuestas automáticas inteligentes con IA
+- ✅ Respuestas automáticas inteligentes
 - ✅ Menú interactivo con opciones dinámicas
 - ✅ Gestión automática de contactos
 - ✅ Plantillas personalizables con variables
 - ✅ Historial completo de conversaciones
 - ✅ Soporte para diferentes tipos de media
 - ✅ Sistema de estados de mensajes
+- ✅ Gestión de usuarios inactivos
 
 ## 🏗️ Arquitectura del Sistema
 
@@ -79,8 +84,8 @@ Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para 
                                 │                       │
                                 │                       ▼
                                 │              ┌─────────────────┐
-                                │              │   Google Gemini │
-                                │              │   (IA)          │
+                                │              │   OAuth/JWT     │
+                                │              │   (Auth)        │
                                 │              └─────────────────┘
                                 ▼
                        ┌─────────────────┐
@@ -97,7 +102,7 @@ Este proyecto es un sistema completo de chatbot para WhatsApp desarrollado para 
 - Node.js 16+
 - MySQL 8.0+
 - Cuenta de WhatsApp Business API
-- API Key de Google Gemini
+- Configuración OAuth (Laravel passport API, Tambien podrias usar autenticacion con google adaptando el proyecto.)
 
 ### 1. Clonar el Repositorio
 
@@ -143,17 +148,26 @@ npm install
 # WhatsApp Business API
 WHATSAPP_ACCESS_TOKEN=tu_token_aqui
 WHATSAPP_PHONE_NUMBER_ID=tu_phone_number_id
+WHATSAPP_BUSINESS_ACCOUNT_ID=tu_business_account_id
 WHATSAPP_VERIFY_TOKEN=Agrojurado2026
 
 # Base de Datos
 DB_HOST=localhost
 DB_USER=root
-DB_NAME=agrojura
+DB_NAME=agrojura_web
 DB_PASSWORD=tu_password
 DB_PORT=3306
 
-# Google Gemini AI
-GOOGLE_API_KEY=tu_api_key_de_gemini
+# OAuth Configuration
+OAUTH_CLIENT_ID=tu_oauth_client_id
+OAUTH_CLIENT_SECRET=tu_oauth_client_secret
+OAUTH_REDIRECT_URI=http://localhost:5173/auth/callback
+OAUTH_AUTH_URL=https://accounts.google.com/o/oauth2/auth
+OAUTH_TOKEN_URL=https://oauth2.googleapis.com/token
+OAUTH_USER_URL=https://www.googleapis.com/oauth2/v2/userinfo
+
+# JWT Configuration
+JWT_SECRET_KEY=tu_jwt_secret_key_super_segura
 
 # Configuración del Servidor
 HOST=0.0.0.0
@@ -164,7 +178,7 @@ PORT=8000
 
 1. **Configurar en Meta Developers**:
    - URL: `https://tu-dominio.com/webhook`
-   - Verify Token: `TU_TOKEN_AQUI`
+   - Verify Token: `TU_TOKEN_VERIFICACION_AQUI`
    - Suscribirse a eventos: `messages`, `message_deliveries`
 
 2. **Verificar webhook**:
@@ -196,6 +210,12 @@ npm run dev
 - **Backend**: http://localhost:8000
 
 ## 📡 API Endpoints
+
+### Autenticación
+- `GET /auth/login` - Iniciar proceso de login OAuth
+- `GET /auth/callback` - Callback de OAuth
+- `GET /auth/logout` - Cerrar sesión
+- `GET /auth/user` - Obtener información del usuario actual
 
 ### Gestión de Contactos
 - `GET /api/contacts` - Obtener todos los contactos
@@ -242,65 +262,83 @@ npm run dev
 
 ```
 chatbot-agrojurado/
-├── 📁 frontend/                 # Aplicación React con Vite
+├── 📁 config/                    # Configuración del sistema
+│   ├── __init__.py
+│   ├── cors.py                   # Configuración CORS
+│   └── settings.py               # Variables de entorno
+├── 📁 dependencies/              # Dependencias compartidas
+├── 📁 middleware/                # Middleware personalizado
+│   ├── __init__.py
+│   ├── auth.py                   # Middleware de autenticación
+│   └── permissions.py            # Sistema de permisos
+├── 📁 models/                    # Modelos de base de datos
+│   ├── __init__.py
+│   ├── auth_models.py            # Modelos de autenticación
+│   ├── contact_models.py         # Modelos de contactos
+│   ├── message_models.py         # Modelos de mensajes
+│   ├── template_models.py        # Modelos de plantillas
+│   └── whatsapp_models.py        # Modelos de WhatsApp
+├── 📁 routers/                   # Rutas de la API
+│   ├── __init__.py
+│   ├── auth.py                   # Rutas de autenticación
+│   ├── contacts.py               # Gestión de contactos
+│   ├── messages.py               # Gestión de mensajes
+│   ├── statistics.py             # Estadísticas
+│   ├── templates.py              # Gestión de plantillas
+│   ├── webhook.py                # Webhook de WhatsApp
+│   └── websocket.py              # WebSocket
+├── 📁 services/                  # Servicios del backend
+│   ├── auth_service.py           # Servicio de autenticación
+│   └── whatsapp_service.py       # Servicio de WhatsApp
+├── 📁 static/                    # Archivos estáticos
+│   ├── 📁 images/
+│   └── 📁 uploads/               # Archivos subidos
+├── 📁 utils/                     # Utilidades
+│   ├── __init__.py
+│   └── websocket_manager.py      # Gestor de WebSocket
+├── 📁 frontend/                  # Aplicación React con Vite
 │   ├── 📁 src/
-│   │   ├── 📁 components/      # Componentes React
-│   │   │   ├── ChatPanel.tsx   # Panel principal del chat
-│   │   │   ├── ChatWindow.tsx  # Ventana de chat
+│   │   ├── 📁 components/        # Componentes React
+│   │   │   ├── AuthCallback.tsx  # Callback de autenticación
+│   │   │   ├── ChatPanel.tsx     # Panel principal del chat
+│   │   │   ├── ChatWindow.tsx    # Ventana de chat
 │   │   │   ├── ContactManager.tsx # Gestión de contactos
 │   │   │   ├── ContactImport.tsx # Importación masiva
-│   │   │   ├── TemplatePanel.tsx # Editor de plantillas
+│   │   │   ├── InfiniteScroll.tsx # Scroll infinito
+│   │   │   ├── InputArea.tsx     # Área de entrada
+│   │   │   ├── LoginPage.tsx     # Página de login
 │   │   │   ├── MediaSelector.tsx # Selector de medios
-│   │   │   ├── StatisticsDashboard.tsx # Dashboard de estadísticas
 │   │   │   ├── MessageStatus.tsx # Estados de mensajes
-│   │   │   ├── InputArea.tsx   # Área de entrada
-│   │   │   └── InfiniteScroll.tsx # Scroll infinito
-│   │   ├── 📁 services/        # Servicios de API
-│   │   │   ├── contactService.ts
-│   │   │   ├── messageService.ts
-│   │   │   ├── templateService.ts
-│   │   │   └── websocketService.ts
-│   │   ├── 📁 contexts/        # Context API
-│   │   │   └── ContactContext.tsx
-│   │   ├── 📁 hooks/          # Custom hooks
-│   │   └── 📁 config/         # Configuración
-│   ├── package.json
-│   └── vite.config.ts
-├── 📁 models/                  # Modelos de base de datos
-│   └── whatsapp_models.py
-├── 📁 services/                # Servicios del backend
-│   ├── whatsapp_service.py     # Servicio de WhatsApp
-│   └── gemini_service.py      # Servicio de IA
-├── 📁 static/                  # Archivos estáticos
-│   ├── 📁 images/
-│   └── 📁 uploads/
-├── 📄 main.py                  # Aplicación principal FastAPI
-├── 📄 database.py              # Configuración de base de datos
-├── 📄 update_database.py       # Script de actualización de BD
-├── 📄 requirements.txt         # Dependencias Python
-└── 📄 env.example             # Ejemplo de variables de entorno
+│   │   │   ├── ProtectedComponent.tsx # Componente protegido
+│   │   │   ├── StatisticsDashboard.tsx # Dashboard de estadísticas
+│   │   │   └── TemplatePanel.tsx # Editor de plantillas
+│   │   ├── 📁 contexts/          # Context API
+│   │   │   ├── AuthContext.tsx   # Contexto de autenticación
+│   │   │   └── ContactContext.tsx # Contexto de contactos
+│   │   ├── 📁 hooks/             # Custom hooks
+│   │   │   └── usePermissions.ts # Hook de permisos
+│   │   ├── 📁 services/          # Servicios de API
+│   │   │   ├── contactService.ts # Servicio de contactos
+│   │   │   ├── messageService.ts # Servicio de mensajes
+│   │   │   ├── templateService.ts # Servicio de plantillas
+│   │   │   └── websocketService.ts # Servicio WebSocket
+│   │   ├── 📁 utils/             # Utilidades del frontend
+│   │   │   └── auth.ts           # Utilidades de autenticación
+│   │   ├── App.tsx               # Componente principal
+│   │   ├── main.tsx              # Punto de entrada
+│   │   └── index.css             # Estilos globales
+│   ├── package.json              # Dependencias del frontend
+│   ├── vite.config.ts            # Configuración de Vite
+│   └── tsconfig.json             # Configuración de TypeScript
+├── 📄 main.py                    # Aplicación principal FastAPI
+├── 📄 database.py                # Configuración de base de datos
+├── 📄 update_database.py         # Script de actualización de BD
+├── 📄 requirements.txt           # Dependencias Python
+├── 📄 env.example               # Ejemplo de variables de entorno
+└── 📄 README.md                 # Este archivo
 ```
 
 ## 🛠️ Desarrollo
-
-### Scripts Útiles
-
-```bash
-# Actualizar base de datos
-python update_database.py
-
-# Probar webhook
-python test_webhook.py
-
-# Verificar templates
-python test_whatsapp_templates.py
-
-# Probar envío de mensajes
-python test_send_template.py
-
-# Verificar conexión a BD
-python test_contacts_api.py
-```
 
 ### Comandos de Desarrollo
 
@@ -312,51 +350,27 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 cd frontend
 npm run dev
 
-# Linting
-cd frontend
-npm run lint
-
-# Build
+# Build del frontend
 cd frontend
 npm run build
 ```
-
-### Nuevas Funcionalidades
-
-#### 🎨 Frontend Mejorado
-- **Componentes Modulares**: Cada funcionalidad tiene su propio componente
-- **Context API**: Gestión de estado global para contactos
-- **WebSocket Real-time**: Comunicación instantánea
-- **Media Management**: Subida y gestión de archivos multimedia
-- **Statistics Dashboard**: Gráficos interactivos con Recharts
-- **Infinite Scroll**: Carga eficiente de mensajes
-- **Template Editor**: Editor avanzado de plantillas
-
-#### 🔧 Backend Avanzado
-- **Media Upload**: Soporte para subida de archivos
-- **Bulk Operations**: Operaciones masivas para contactos
-- **Template Management**: Sistema completo de plantillas
-- **Statistics API**: Métricas y estadísticas del sistema
-- **WebSocket Manager**: Gestión avanzada de conexiones
-- **AI Integration**: Integración con Google Gemini
 
 ## 🚀 Despliegue
 
 ### Producción
 
-1. **Configurar servidor**:
+1. **Instalar dependencias**:
    ```bash
-   # Instalar dependencias del sistema
    sudo apt update
-   sudo apt install python3 python3-pip nodejs npm mysql-server nginx
+   sudo apt install python3 python3-pip nodejs npm mysql-server
    ```
 
 2. **Configurar base de datos**:
    ```bash
    mysql -u root -p
-   CREATE DATABASE agrojura;
+   CREATE DATABASE agrojura_web;
    CREATE USER 'agrojurado'@'localhost' IDENTIFIED BY 'password';
-   GRANT ALL PRIVILEGES ON agrojura.* TO 'agrojurado'@'localhost';
+   GRANT ALL PRIVILEGES ON agrojura_web.* TO 'agrojurado'@'localhost';
    ```
 
 3. **Configurar variables de entorno**:
@@ -376,7 +390,7 @@ npm run build
    npm run build
    ```
 
-6. **Configurar nginx**:
+6. **Configurar nginx** (opcional):
    ```nginx
    server {
        listen 80;
@@ -387,106 +401,32 @@ npm run build
            proxy_set_header Host $host;
            proxy_set_header X-Real-IP $remote_addr;
        }
-       
-       location /static/ {
-           alias /path/to/chatbot-agrojurado/static/;
-       }
    }
    ```
 
 7. **Iniciar servicios**:
    ```bash
-   # Backend con systemd
-   sudo systemctl enable chatbot-backend
-   sudo systemctl start chatbot-backend
+   # Backend
+   uvicorn main:app --host 0.0.0.0 --port 8000
    ```
-
-### Docker (Opcional)
-
-```dockerfile
-# Dockerfile para el backend
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
 
 ## 🔧 Solución de Problemas
 
 ### Problemas Comunes
 
-#### 1. Error de Conexión a Base de Datos
-```bash
-# Verificar conexión
-python -c "from database import SessionLocal; db = SessionLocal(); print('Conexión exitosa')"
-
-# Actualizar base de datos
-python update_database.py
-```
-
-#### 2. Webhook no Funciona
-- Verificar que el webhook esté verificado en Meta Developers
-- Comprobar que la URL sea accesible desde internet
-- Revisar logs del servidor
-- Verificar `WHATSAPP_VERIFY_TOKEN`
-
-#### 3. Frontend no se Conecta al Backend
-- Verificar CORS en `main.py`
-- Comprobar que el backend esté corriendo en puerto 8000
-- Revisar configuración de WebSocket
-- Verificar variables de entorno
-
-#### 4. Mensajes no se Envían
-- Verificar `WHATSAPP_ACCESS_TOKEN`
-- Comprobar `WHATSAPP_PHONE_NUMBER_ID`
-- Revisar logs de la API de WhatsApp
-- Verificar permisos de la cuenta de WhatsApp Business
-
-#### 5. Media no se Sube
-- Verificar permisos de escritura en `/static/uploads/`
-- Comprobar límites de tamaño de archivo
-- Revisar configuración de `python-multipart`
-
-### Logs Útiles
-
-```bash
-# Ver logs del backend
-tail -f logs/app.log
-
-# Ver logs de uvicorn
-uvicorn main:app --log-level debug
-
-# Ver logs de MySQL
-sudo tail -f /var/log/mysql/error.log
-
-# Ver logs del frontend
-cd frontend && npm run dev
-```
-
-### Verificación de Servicios
-
-```bash
-# Verificar que todos los servicios estén corriendo
-ps aux | grep -E "(uvicorn|node|mysql)"
-
-# Verificar puertos
-netstat -tlnp | grep -E "(8000|5173|3306)"
-
-# Verificar variables de entorno
-python -c "import os; from dotenv import load_dotenv; load_dotenv(); print('Variables cargadas:', bool(os.getenv('WHATSAPP_ACCESS_TOKEN')))"
-```
+- **Error de Conexión a Base de Datos**: Verificar credenciales en `.env` y ejecutar `python update_database.py`
+- **Webhook no Funciona**: Verificar configuración en Meta Developers y `WHATSAPP_VERIFY_TOKEN`
+- **Frontend no se Conecta**: Verificar CORS en `config/cors.py` y que el backend esté corriendo
+- **Mensajes no se Envían**: Verificar `WHATSAPP_ACCESS_TOKEN` y permisos de WhatsApp Business
+- **Media no se Sube**: Verificar permisos de escritura en `/static/uploads/`
+- **Problemas de Autenticación**: Verificar configuración OAuth y `JWT_SECRET_KEY`
 
 ## 📞 Soporte
 
-Para soporte técnico o preguntas:
-
-1. **Revisar logs** del servidor y frontend
-2. **Verificar configuración** de variables de entorno
-3. **Comprobar conectividad** de red y servicios
-4. **Consultar documentación** de WhatsApp Business API
-5. **Verificar base de datos** con `update_database.py`
+Para soporte técnico:
+1. Verificar configuración de variables de entorno
+2. Comprobar conectividad de servicios
+3. Consultar documentación de WhatsApp Business API
 
 ## 📄 Licencia
 

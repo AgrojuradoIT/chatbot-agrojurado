@@ -1,21 +1,22 @@
 .input-area {
   display: flex;
   gap: 8px;
-  padding: 10px 16px;
-  border-top: 1px solid #374045;
+  padding: 8px 16px;
   background-color: #202c33;
   align-items: flex-end;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .input-area textarea {
   flex: 1;
   padding: 9px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 20px;
   resize: none;
   font-family: inherit;
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.3;
   min-height: 20px;
   max-height: 100px;
   background-color: #2a3942;
@@ -25,9 +26,7 @@
 
 .input-area textarea:focus {
   outline: none;
-  border: none;
   background-color: #2a3942;
-  box-shadow: none;
   color: #e9edef;
 }
 
@@ -36,64 +35,90 @@
 }
 
 .input-area button {
-  padding: 8px 12px;
+  width: 42px;
+  height: 42px;
   background-color: #00a884;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 400;
   transition: all 0.2s ease;
-  min-width: 60px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.26);
 }
 
 .input-area button:hover:not(:disabled) {
   background-color: #008f72;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 168, 132, 0.3);
+  transform: scale(1.05);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .input-area button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.95);
 }
 
 .input-area button:disabled {
   background-color: #374045;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  opacity: 0.6;
 }
 
-/* Responsive Design - Simple */
+/* Responsive Design */
 @media (max-width: 768px) {
   .input-area {
-    padding: 6px 10px;
+    padding: 6px 12px;
+    gap: 6px;
   }
   
   .input-area textarea {
-    font-size: 13px;
+    font-size: 14px;
+    padding: 8px 12px;
   }
   
   .input-area button {
-    font-size: 11px;
+    width: 38px;
+    height: 38px;
+  }
+  
+  .input-area .material-icons {
+    font-size: 18px;
   }
 }
 
 @media (max-width: 480px) {
   .input-area {
-    padding: 4px 8px;
+    padding: 5px 10px;
+    gap: 5px;
   }
   
   .input-area textarea {
-    font-size: 12px;
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 18px;
   }
   
   .input-area button {
-    font-size: 10px;
+    width: 36px;
+    height: 36px;
   }
+  
+  .input-area .material-icons {
+    font-size: 16px;
+  }
+}
+
+/* Estilos para iconos Material Icons */
+.input-area .material-icons {
+  font-size: 20px;
+  color: inherit;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0;
 }
