@@ -208,19 +208,7 @@
   background: linear-gradient(135deg, #2d4a2d 0%, #4CAF50 50%, #66BB6A 100%);
 }
 
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+/* Spinner eliminado. Usar Loader.css global */
 
 .login-footer {
   border-top: 1px solid #333;

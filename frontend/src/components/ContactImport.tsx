@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { contactService } from '../services/contactService';
 import type { ContactCreateRequest } from '../services/contactService';
+import Loader from './Loader';
+import { useNotifications } from './NotificationContainer';
 
 interface ImportResult {
   success: number;
@@ -22,6 +24,7 @@ interface ContactImportProps {
 }
 
 const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose }) => {
+  const { showNotification } = useNotifications();
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -274,7 +277,11 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
           file.name.endsWith('.xls')) {
         processExcelFile(file);
       } else {
-        alert('Por favor selecciona un archivo Excel (.xlsx o .xls)');
+        showNotification({
+          type: 'warning',
+          title: 'Formato de Archivo Incorrecto',
+          message: 'Por favor selecciona un archivo Excel (.xlsx o .xls)'
+        });
       }
     }
   };
@@ -358,7 +365,7 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
           
           {isImporting && (
             <div className="importing-status">
-              <div className="loading-spinner"></div>
+              <Loader size={20} />
               <p>Procesando archivo...</p>
             </div>
           )}

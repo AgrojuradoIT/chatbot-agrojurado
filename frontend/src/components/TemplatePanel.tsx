@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import './TemplatePanel.css';
+import '../styles/TemplatePanel.css';
 import { templateService } from '../services/templateService';
 import type { TemplateWithMediaRequest } from '../services/templateService';
 import { useContacts } from '../contexts/ContactContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getAuthHeaders } from '../utils/auth';
 import MediaSelector from './MediaSelector';
+import LoadingButton from './LoadingButton';
 import { TemplateProtected } from './ProtectedComponent';
+import { useNotifications } from './NotificationContainer';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './ConfirmDialog';
 
 interface Template {
   id: string;
@@ -44,6 +48,8 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   };
   const { contacts } = useContacts();
   const { user } = useAuth();
+  const { showNotification } = useNotifications();
+  const { confirm, confirmDialog } = useConfirm();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +59,8 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const [showArchivedTemplates, setShowArchivedTemplates] = useState(false);
   const [archivedTemplates, setArchivedTemplates] = useState<Template[]>([]);
   const [archivingTemplate, setArchivingTemplate] = useState<string | null>(null);
+  const [isSendingTemplate, setIsSendingTemplate] = useState(false);
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -170,14 +178,27 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
 
 
   const handleArchiveTemplate = async (templateId: string, templateName: string) => {
-    if (!confirm(`¿Estás seguro de que quieres archivar la plantilla "${templateName}"?`)) {
+    const confirmed = await confirm({
+      title: 'Archivar Plantilla',
+      message: `¿Estás seguro de que quieres archivar la plantilla "${templateName}"?`,
+      confirmText: 'Archivar',
+      cancelText: 'Cancelar',
+      type: 'warning'
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       setArchivingTemplate(templateId);
       await templateService.archiveTemplate(templateId);
-      alert('Plantilla archivada exitosamente');
+      
+      showNotification({
+        type: 'success',
+        title: 'Plantilla Archivada',
+        message: 'La plantilla se ha archivado exitosamente.'
+      });
       
       // Pequeño delay para asegurar que la base de datos se actualice
       setTimeout(() => {
@@ -188,7 +209,11 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       }, 100);
     } catch (err: any) {
       console.error('Error al archivar plantilla:', err);
-      alert(err.message || 'Error al archivar plantilla');
+      showNotification({
+        type: 'error',
+        title: 'Error al Archivarla Plantilla',
+        message: err.message || 'Error al archivar la plantilla'
+      });
       setArchivingTemplate(null);
     }
   };
@@ -197,7 +222,12 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     try {
       setArchivingTemplate(templateId);
       await templateService.unarchiveTemplate(templateId);
-      alert('Plantilla desarchivada exitosamente');
+      
+      showNotification({
+        type: 'success',
+        title: 'Plantilla Desarchivada',
+        message: 'La plantilla se ha desarchivado exitosamente.'
+      });
       
       // Pequeño delay para asegurar que la base de datos se actualice
       setTimeout(() => {
@@ -213,7 +243,11 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       }, 100);
     } catch (err: any) {
       console.error('Error al desarchivar plantilla:', err);
-      alert(err.message || 'Error al desarchivar plantilla');
+      showNotification({
+        type: 'error',
+        title: 'Error al Desarchivar Plantilla',
+        message: err.message || 'Error al desarchivar la plantilla'
+      });
       setArchivingTemplate(null);
     }
   };
@@ -221,6 +255,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const handleCreateTemplate = async () => {
     if (newTemplate.name && newTemplate.content) {
       try {
+        setIsCreatingTemplate(true);
         await templateService.createTemplate({
           name: newTemplate.name,
           content: newTemplate.content,
@@ -231,9 +266,21 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         await fetchTemplates();
         setNewTemplate({ name: '', content: '', category: 'UTILITY', footer: '' });
         setShowCreateModal(false);
+        
+        showNotification({
+          type: 'success',
+          title: 'Plantilla Creada',
+          message: `La plantilla "${newTemplate.name}" se ha creado exitosamente.`
+        });
       } catch (err: any) {
         console.error('Error:', err);
-        alert(err.message || 'Error al crear la plantilla');
+        showNotification({
+          type: 'error',
+          title: 'Error al Crear Plantilla',
+          message: err.message || 'Error al crear la plantilla'
+        });
+      } finally {
+        setIsCreatingTemplate(false);
       }
     }
   };
@@ -241,15 +288,24 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const handleCreateTemplateWithMedia = async () => {
     if (newTemplate.name && newTemplate.content) {
       try {
+        setIsCreatingTemplate(true);
         // Validar que la categoría permita medios si se seleccionó tipo media
         if (templateType === 'media' && !categoryAllowsMedia(newTemplate.category)) {
-          alert('Esta categoría no permite medios multimedia. Selecciona otra categoría o cambia a "Solo Texto".');
+          showNotification({
+            type: 'warning',
+            title: 'Categoría No Compatible',
+            message: 'Esta categoría no permite medios multimedia. Selecciona otra categoría o cambia a "Solo Texto".'
+          });
           return;
         }
 
         // Validar que se haya seleccionado un medio si es tipo media
         if (templateType === 'media' && !selectedFile && !selectedImageUrl) {
-          alert('Por favor selecciona una imagen o video para la plantilla con medios.');
+          showNotification({
+            type: 'warning',
+            title: 'Medio Requerido',
+            message: 'Por favor selecciona una imagen o video para la plantilla con medios.'
+          });
           return;
         }
 
@@ -313,9 +369,21 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         setSelectedImageUrl('');
         setSelectedFile(null);
         setShowCreateModal(false);
+        
+        showNotification({
+          type: 'success',
+          title: 'Plantilla Creada',
+          message: `La plantilla "${newTemplate.name}" se ha creado exitosamente.`
+        });
       } catch (err: any) {
         console.error('Error:', err);
-        alert(err.message || 'Error al crear la plantilla');
+        showNotification({
+          type: 'error',
+          title: 'Error al Crear Plantilla',
+          message: err.message || 'Error al crear la plantilla'
+        });
+      } finally {
+        setIsCreatingTemplate(false);
       }
     }
   };
@@ -348,11 +416,16 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
 
   const handleSendTemplateWithMedia = async () => {
     if (selectedContacts.length === 0) {
-      alert('Por favor selecciona al menos un contacto');
+      showNotification({
+        type: 'warning',
+        title: 'Sin Contactos Seleccionados',
+        message: 'Por favor selecciona al menos un contacto para enviar la plantilla.'
+      });
       return;
     }
 
     try {
+      setIsSendingTemplate(true);
       const templateName = templates.find(t => t.id === selectedTemplate)?.name;
       if (!templateName) {
         throw new Error('Plantilla no encontrada');
@@ -403,18 +476,52 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
           {}, // parameters
           headerParams // header_parameters con el enlace
         );
-        alert(`Plantilla con multimedia enviada exitosamente a ${result.results.filter((r: any) => r.success).length} contactos`);
+
+        const successCount = result.results.filter((r: any) => r.success).length;
+        if (successCount > 0) {
+          showNotification({
+            type: 'success',
+            title: 'Plantilla Enviada',
+            message: `Plantilla "${templateName}" enviada exitosamente a ${successCount} contactos.`
+          });
+        } else {
+          showNotification({
+            type: 'warning',
+            title: 'Envío sin éxito',
+            message: 'No se pudo entregar la plantilla a ningún contacto. Verifica el estado de la plantilla y los contactos.'
+          });
+        }
       } else {
         // Plantilla solo texto
         const result = await templateService.sendTemplate(templateName, selectedContacts, {});
-        alert(`Plantilla enviada exitosamente a ${result.results.filter((r: any) => r.success).length} contactos`);
+
+        const successCount = result.results.filter((r: any) => r.success).length;
+        if (successCount > 0) {
+          showNotification({
+            type: 'success',
+            title: 'Plantilla Enviada',
+            message: `Plantilla "${templateName}" enviada exitosamente a ${successCount} contactos.`
+          });
+        } else {
+          showNotification({
+            type: 'warning',
+            title: 'Envío sin éxito',
+            message: 'No se pudo entregar la plantilla a ningún contacto. Verifica el estado de la plantilla y los contactos.'
+          });
+        }
       }
       
       onSendTemplate(selectedTemplate, selectedContacts);
       setSelectedTemplate('');
     } catch (err: any) {
       console.error('Error:', err);
-      alert(err.message || 'Error al enviar la plantilla');
+      showNotification({
+        type: 'error',
+        title: 'Error al Enviar Plantilla',
+        message: err.message || 'Error al enviar la plantilla'
+      });
+    } finally {
+      setIsSendingTemplate(false);
     }
   };
 
@@ -615,40 +722,45 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         ))}
       </div>
 
-      {/* Botón compuesto para gestionar contactos */}
-      <div className="contacts-modal-trigger">
-        <div className="composite-contacts-btn">
-          <button 
-            className={`select-contacts-btn ${selectedContacts.length === 0 ? 'alone' : ''}`}
-            onClick={() => setShowContactsModal(true)}
-          >
-            Contactos ({selectedContacts.length})
-          </button>
-          {selectedContacts.length > 0 && (
-            <button 
-              className="clear-contacts-btn"
-              onClick={handleDeselectAllContacts}
-              title="Limpiar selección"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      </div>
-
       <div className="template-actions">
         <div className="selection-info">
           Contactos seleccionados: {selectedContacts.length}
         </div>
-        <TemplateProtected action="use" fallback={<div className="no-permission-input">No tienes permisos para enviar plantillas</div>}>
-          <button
-            className="send-template-btn"
-            onClick={handleSendTemplateWithMedia}
-            disabled={!selectedTemplate || selectedContacts.length === 0}
-          >
-            Enviar Plantilla
-          </button>
-        </TemplateProtected>
+        <div className="action-buttons">
+          <div className="composite-contacts-btn">
+            <button 
+              className={`select-contacts-btn ${selectedContacts.length === 0 ? 'alone' : ''}`}
+              onClick={() => setShowContactsModal(true)}
+            >
+              Seleccionar Contactos ({selectedContacts.length})
+            </button>
+            {selectedContacts.length > 0 && (
+              <button 
+                className="clear-contacts-btn"
+                onClick={handleDeselectAllContacts}
+                title="Limpiar selección"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                </svg>
+              </button>
+            )}
+          </div>
+          <TemplateProtected action="use" fallback={<div className="no-permission-input">No tienes permisos para enviar plantillas</div>}>
+            <LoadingButton
+              className="send-template-btn icon-only"
+              onClick={handleSendTemplateWithMedia}
+              disabled={!selectedTemplate || selectedContacts.length === 0}
+              loading={isSendingTemplate}
+              loadingText=""
+              title="Enviar Plantilla"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+              </svg>
+            </LoadingButton>
+          </TemplateProtected>
+        </div>
       </div>
 
       {showCreateModal && (
@@ -789,19 +901,22 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               />
             </div>
             <div className="modal-actions">
-              <button 
+              <LoadingButton 
                 onClick={templateType === 'media' ? handleCreateTemplateWithMedia : handleCreateTemplate}
                 disabled={!newTemplate.name || !newTemplate.content || 
                          (templateType === 'media' && categoryAllowsMedia(newTemplate.category) && 
                           !selectedFile && !selectedImageUrl)}
+                loading={isCreatingTemplate}
+                loadingText="Creando..."
               >
                 {templateType === 'media' ? 'Crear con Medio' : 'Crear Plantilla'}
-              </button>
+              </LoadingButton>
               <button onClick={() => {
                 setShowCreateModal(false);
                 setTemplateType('text');
                 handleClearMedia();
-              }}>
+              }}
+              disabled={isCreatingTemplate}>
                 Cancelar
               </button>
             </div>
@@ -891,6 +1006,20 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Diálogo de confirmación */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={confirmDialog.onCancel}
+        />
       )}
     </div>
   );

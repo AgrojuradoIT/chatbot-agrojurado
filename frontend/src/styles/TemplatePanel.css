@@ -419,6 +419,54 @@
   margin-bottom: 10px;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.action-buttons .composite-contacts-btn {
+  flex: 0 1 auto;
+  max-width: 250px;
+}
+
+.action-buttons .select-contacts-btn {
+  flex: 1;
+  border-radius: 6px 0 0 6px;
+  border-right: 1px solid rgba(134, 150, 160, 0.3);
+}
+
+.action-buttons .send-template-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  min-width: 48px;
+}
+
+.action-buttons .send-template-btn.icon-only {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 36px;
+  min-width: 48px;
+  min-height: 36px;
+}
+
+.action-buttons .send-template-btn.icon-only svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.action-buttons .send-template-btn.icon-only .loader {
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 .send-template-btn {
   background: linear-gradient(135deg, #00a884 0%, #008f72 100%);
   border: none;
@@ -447,6 +495,9 @@
   transform: none;
   box-shadow: none;
 }
+
+/* Loader spinner para botones */
+/* Loader spinner eliminado. Usar Loader.css global */
 
 
 
@@ -566,8 +617,14 @@
 }
 
 .modal-actions button:disabled {
-  opacity: 0.5;
+  opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+}
+
+.modal-actions button:disabled:hover {
+  background: linear-gradient(135deg, #374045 0%, #2a383e 100%);
+  transform: none;
 }
 
 /* Scrollbar personalizado estilo WhatsApp */
@@ -714,6 +771,14 @@
   align-items: center;
   justify-content: center;
   outline: none;
+}
+
+.clear-contacts-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .clear-contacts-btn:focus {

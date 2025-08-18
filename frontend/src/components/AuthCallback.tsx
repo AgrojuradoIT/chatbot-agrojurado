@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import './AuthCallback.css';
+import '../styles/AuthCallback.css';
+import Loader from './Loader';
 
 const AuthCallback: React.FC = () => {
   const { handleCallback } = useAuth();
@@ -70,7 +71,7 @@ const AuthCallback: React.FC = () => {
           {status === 'processing' && (
             <>
               <div className="callback-spinner">
-                <div className="spinner-large"></div>
+                <Loader size={60} />
               </div>
               <h2>Procesando Autenticación</h2>
               <p>{message}</p>

@@ -1,5 +1,5 @@
 import React from 'react';
-import './MessageStatus.css';
+import '../styles/MessageStatus.css';
 
 interface MessageStatusProps {
   status?: 'sending' | 'sent' | 'delivered' | 'error';

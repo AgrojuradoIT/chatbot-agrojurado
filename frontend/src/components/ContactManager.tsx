@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { contactService } from '../services/contactService';
 import type { Contact, ContactCreateRequest } from '../services/contactService';
 import ContactImport from './ContactImport';
-import './ContactImport.css';
+import '../styles/ContactImport.css';
 import { useContacts } from '../contexts/ContactContext';
 import { ContactProtected } from './ProtectedComponent';
+import { useNotifications } from './NotificationContainer';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from './ConfirmDialog';
 
 
 interface ContactManagerProps {
@@ -17,6 +20,8 @@ const ContactManager: React.FC<ContactManagerProps> = ({
   onSelectChat
 }) => {
   const { contacts, loading, error } = useContacts();
+  const { showNotification } = useNotifications();
+  const { confirm, confirmDialog } = useConfirm();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -29,7 +34,11 @@ const ContactManager: React.FC<ContactManagerProps> = ({
 
   const handleCreateContact = async () => {
     if (!newContact.phone_number || !newContact.name) {
-      alert('Por favor completa todos los campos');
+      showNotification({
+        type: 'warning',
+        title: 'Campos Incompletos',
+        message: 'Por favor completa todos los campos requeridos.'
+      });
       return;
     }
 
@@ -42,9 +51,18 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       setShowCreateModal(false);
       // No recargar aquí, el contexto se encargará de actualizar
       onContactUpdate?.();
-      alert('Contacto creado exitosamente');
+      
+      showNotification({
+        type: 'success',
+        title: 'Contacto Creado',
+        message: `El contacto "${newContact.name}" se ha creado exitosamente.`
+      });
     } catch (err: any) {
-      alert(err.message || 'Error al crear contacto');
+      showNotification({
+        type: 'error',
+        title: 'Error al Crear Contacto',
+        message: err.message || 'Error al crear el contacto'
+      });
     }
   };
 
@@ -60,14 +78,31 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       setEditingContact(null);
       // No recargar aquí, el WebSocket se encargará de actualizar
       onContactUpdate?.();
-      alert('Contacto actualizado exitosamente');
+      
+      showNotification({
+        type: 'success',
+        title: 'Contacto Actualizado',
+        message: `El contacto "${editingContact.name}" se ha actualizado exitosamente.`
+      });
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar contacto');
+      showNotification({
+        type: 'error',
+        title: 'Error al Actualizar Contacto',
+        message: err.message || 'Error al actualizar el contacto'
+      });
     }
   };
 
   const handleDeleteContact = async (phoneNumber: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este contacto?')) {
+    const confirmed = await confirm({
+      title: 'Eliminar Contacto',
+      message: '¿Estás seguro de que quieres eliminar este contacto? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -75,9 +110,18 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       await contactService.deleteContact(phoneNumber);
       // No recargar aquí, el WebSocket se encargará de actualizar
       onContactUpdate?.();
-      alert('Contacto eliminado exitosamente');
+      
+      showNotification({
+        type: 'success',
+        title: 'Contacto Eliminado',
+        message: 'El contacto se ha eliminado exitosamente.'
+      });
     } catch (err: any) {
-      alert(err.message || 'Error al eliminar contacto');
+      showNotification({
+        type: 'error',
+        title: 'Error al Eliminar Contacto',
+        message: err.message || 'Error al eliminar el contacto'
+      });
     }
   };
 
@@ -274,6 +318,20 @@ const ContactManager: React.FC<ContactManagerProps> = ({
             onContactUpdate?.();
           }}
           onClose={() => setShowImportModal(false)}
+        />
+      )}
+
+      {/* Diálogo de confirmación */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          type={confirmDialog.type}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={confirmDialog.onCancel}
         />
       )}
     </div>

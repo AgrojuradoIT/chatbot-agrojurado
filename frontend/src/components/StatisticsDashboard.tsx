@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { messageService } from '../services/messageService';
 import type { Contact } from '../services/contactService';
+import Loader from './Loader';
 import { 
   BarChart, 
   Bar, 
@@ -17,7 +18,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import './StatisticsDashboard.css';
+import '../styles/StatisticsDashboard.css';
 
 interface ContactStats {
   contact: Contact;
@@ -168,52 +169,52 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isVisible }) 
   return (
     <div className="statistics-dashboard">
       <div className="dashboard-header">
-        <div className="header-content">
+        <div className="header-title">
           <h1>Dashboard de Estadísticas</h1>
           <p>Análisis detallado de mensajes y actividad</p>
         </div>
-      </div>
+        
+        <div className="header-controls">
+          <div className="period-selector">
+            <label>Período de análisis:</label>
+            <select 
+              value={selectedPeriod} 
+              onChange={(e) => setSelectedPeriod(e.target.value as any)}
+            >
+              <option value="7d">Últimos 7 días</option>
+              <option value="30d">Últimos 30 días</option>
+              <option value="90d">Últimos 90 días</option>
+              <option value="all">Todo el tiempo</option>
+            </select>
+          </div>
 
-      <div className="dashboard-controls">
-        <div className="period-selector">
-          <label>Período de análisis:</label>
-          <select 
-            value={selectedPeriod} 
-            onChange={(e) => setSelectedPeriod(e.target.value as any)}
-          >
-            <option value="7d">Últimos 7 días</option>
-            <option value="30d">Últimos 30 días</option>
-            <option value="90d">Últimos 90 días</option>
-            <option value="all">Todo el tiempo</option>
-          </select>
-        </div>
-
-        <div className="tab-navigation">
-          <button 
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            Resumen
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('contacts')}
-          >
-            Contactos
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'trends' ? 'active' : ''}`}
-            onClick={() => setActiveTab('trends')}
-          >
-            Tendencias
-          </button>
+          <div className="stats-tab-navigation">
+            <button 
+              className={`stats-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              RESUMEN
+            </button>
+            <button 
+              className={`stats-tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contacts')}
+            >
+              CONTACTOS
+            </button>
+            <button 
+              className={`stats-tab-btn ${activeTab === 'trends' ? 'active' : ''}`}
+              onClick={() => setActiveTab('trends')}
+            >
+              TENDENCIAS
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="dashboard-content">
         {isLoading ? (
           <div className="loading-container">
-            <div className="loading-spinner"></div>
+            <Loader size={40} />
             <p>Cargando estadísticas...</p>
           </div>
         ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import './App.css';
+import './styles/App.css';
 import ChatWindow from './components/ChatWindow';
 import InputArea from './components/InputArea';
 import ChatPanel from './components/ChatPanel';
@@ -12,7 +12,11 @@ import { messageService } from './services/messageService';
 import { websocketService, type WebSocketMessage } from './services/websocketService';
 import { ContactProvider } from './contexts/ContactContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './components/NotificationContainer';
 import { ProtectedComponent } from './components/ProtectedComponent';
+import { useConfirm } from './hooks/useConfirm';
+import ConfirmDialog from './components/ConfirmDialog';
+import Loader from './components/Loader';
 
 interface Message {
   id: string;
@@ -34,7 +38,8 @@ interface Chat {
 
 // Componente principal del dashboard (protegido)
 function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoggingOut } = useAuth();
+  const { confirm, confirmDialog } = useConfirm();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
@@ -42,7 +47,9 @@ function Dashboard() {
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Cache de mensajes por contacto
   const [messageCache, setMessageCache] = useState<Record<string, {
@@ -382,8 +389,18 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que quieres cerrar tu sesión? Tendrás que volver a iniciar sesión para acceder al sistema.',
+      confirmText: 'Cerrar Sesión',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      logout();
+    }
   };
 
   return (
@@ -393,6 +410,7 @@ function Dashboard() {
           <div className="app-title">
             <h1>Chatbot Agrojurado</h1>
           </div>
+          
           <div className="tab-buttons">
             <ProtectedComponent permissions={['chatbot.messages.view', 'chatbot.messages.send.individual', 'chatbot.messages.send.massive']} hideWhenNoAccess={true}>
               <button 
@@ -426,13 +444,132 @@ function Dashboard() {
                 ESTADÍSTICAS
               </button>
             </ProtectedComponent>
-            <div className="user-info">
-              <span>{user?.name}</span>
-              <button className="logout-btn" onClick={handleLogout}>
-                Cerrar Sesión
-              </button>
-            </div>
           </div>
+          
+          <div className="header-actions">
+            <div className="user-info">
+              <div className="user-details">
+                <div className="user-avatar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <span className="user-name">{user?.name}</span>
+                <button 
+                  className="logout-icon-btn" 
+                  onClick={handleLogout} 
+                  title="Cerrar Sesión"
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? (
+                    <Loader size={14} color="#8696a0" />
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            <button 
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Menú de navegación"
+            >
+              <div className={`hamburger ${isMobileMenuOpen ? 'active' : ''}`}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </button>
+          </div>
+          
+                      {/* Menú móvil */}
+            <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+              <div className="mobile-menu-content">
+              <div className="mobile-user-info">
+                <div className="mobile-user-details">
+                  <div className="mobile-user-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span className="mobile-user-name">{user?.name}</span>
+                </div>
+              </div>
+              
+              <div className="mobile-menu-separator"></div>
+              
+              <ProtectedComponent permissions={['chatbot.messages.view', 'chatbot.messages.send.individual', 'chatbot.messages.send.massive']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('chat');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  CHAT
+                </button>
+              </ProtectedComponent>
+              <ProtectedComponent permissions={['chatbot.templates.create', 'chatbot.templates.edit', 'chatbot.templates.delete', 'chatbot.templates.use']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('templates');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  PLANTILLAS
+                </button>
+              </ProtectedComponent>
+              <ProtectedComponent permissions={['chatbot.contacts.view', 'chatbot.contacts.manage']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'contacts' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('contacts');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  CONTACTOS
+                </button>
+              </ProtectedComponent>
+              <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('statistics');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  ESTADÍSTICAS
+                </button>
+              </ProtectedComponent>
+              
+              <button 
+                className="mobile-logout-btn"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? (
+                  <>
+                    <Loader size={14} color="#ffffff" />
+                    <span>Cerrando Sesión...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor"/>
+                    </svg>
+                    <span>Cerrar Sesión</span>
+                  </>
+                )}
+              </button>
+              </div>
+            </div>
         </div>
         <div className="App-content">
           {/* Panel de chats siempre visible excepto en estadísticas */}
@@ -489,6 +626,20 @@ function Dashboard() {
             </ProtectedComponent>
           )}
         </div>
+        
+        {/* Diálogo de confirmación */}
+        {confirmDialog && (
+          <ConfirmDialog
+            isOpen={confirmDialog.isOpen}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmText={confirmDialog.confirmText}
+            cancelText={confirmDialog.cancelText}
+            type={confirmDialog.type}
+            onConfirm={confirmDialog.onConfirm}
+            onCancel={confirmDialog.onCancel}
+          />
+        )}
       </div>
     </ContactProvider>
   );
@@ -508,7 +659,9 @@ function App() {
 
   return (
     <AuthProvider>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
     </AuthProvider>
   );
 }
@@ -523,7 +676,7 @@ function AppContent() {
         <div className="loading-content">
           <div className="loading-logo"></div>
           <h2 className="loading-title">Chatbot Agrojurado</h2>
-          <div className="loading-spinner"></div>
+          <Loader size={50} />
           <p>Cargando...</p>
         </div>
       </div>

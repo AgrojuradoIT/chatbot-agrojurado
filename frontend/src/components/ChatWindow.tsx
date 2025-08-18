@@ -1,7 +1,8 @@
 import React from 'react';
-import './ChatWindow.css';
+import '../styles/ChatWindow.css';
 import InfiniteScroll from './InfiniteScroll';
 import MessageStatus from './MessageStatus';
+import Loader from './Loader';
 
 interface Message {
   id: string;
@@ -62,7 +63,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div className="messages-container">
           {isLoading && (
             <div className="loading-indicator">
-              <div className="loading-spinner"></div>
+              <Loader size={20} />
               <span>Cargando mensajes...</span>
             </div>
           )}

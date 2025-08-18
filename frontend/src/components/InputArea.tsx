@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './InputArea.css';
+import '../styles/InputArea.css';
 
 interface InputAreaProps {
   onSendMessage: (message: string) => void;

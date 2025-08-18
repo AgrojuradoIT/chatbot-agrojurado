@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
-import './MediaSelector.css';
+import '../styles/MediaSelector.css';
+import { useNotifications } from './NotificationContainer';
+import LoadingButton from './LoadingButton';
 
 interface MediaSelectorProps {
   onMediaSelected: (mediaId: string, mediaType: string, mediaUrl?: string) => void;
@@ -24,6 +26,7 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
   selectedFile,
   mode = 'message'
 }) => {
+  const { showNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState<'upload' | 'url'>('upload');
   const [uploading, setUploading] = useState(false);
   const [imageUrl, setImageUrl] = useState(selectedImageUrl || '');
@@ -35,7 +38,11 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
 
     // Validar formatos soportados por WhatsApp para plantillas
     if (mode === 'template' && !isWhatsAppSupportedFormat(file.type)) {
-      alert(`Formato no soportado por WhatsApp: ${file.type}\n\nFormatos soportados para plantillas:\n• Imágenes: JPEG, PNG\n• Videos: MP4\n• Documentos: PDF`);
+      showNotification({
+        type: 'warning',
+        title: 'Formato No Soportado',
+        message: `Formato no soportado por WhatsApp: ${file.type}. Formatos soportados para plantillas: Imágenes (JPEG, PNG), Videos (MP4), Documentos (PDF)`
+      });
       return;
     }
 
@@ -67,7 +74,11 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
       onMediaSelected(result.id, mediaType, result.url);
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Error al subir el archivo');
+      showNotification({
+        type: 'error',
+        title: 'Error al Subir Archivo',
+        message: 'No se pudo subir el archivo. Intenta nuevamente.'
+      });
     } finally {
       setUploading(false);
     }
@@ -145,13 +156,14 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
-            <button
+            <LoadingButton
               className="upload-btn"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              loading={uploading}
+              loadingText="⏳ Subiendo..."
             >
-              {uploading ? '⏳ Subiendo...' : '📁 Seleccionar Archivo'}
-            </button>
+              📁 Seleccionar Archivo
+            </LoadingButton>
             <p className="upload-hint">
               {mode === 'template' 
                 ? 'Formatos soportados por WhatsApp: JPEG, PNG, MP4, PDF'

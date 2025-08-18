@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   login: () => void;
   logout: () => void;
   handleCallback: (code: string) => Promise<boolean>;
@@ -32,6 +33,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // URLs de configuración OAuth
   const OAUTH_CLIENT_ID = import.meta.env.VITE_OAUTH_CLIENT_ID;
@@ -115,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Función para cerrar sesión
   const logout = async () => {
     try {
+      setIsLoggingOut(true);
       // Usar la función de utilidad para logout completo
       await performLogout(window.location.origin);
     } catch (error) {
@@ -123,6 +126,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('access_token');
       setUser(null);
       window.location.href = '/';
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -150,6 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated: !!user,
     isLoading,
+    isLoggingOut,
     login,
     logout,
     handleCallback,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './ChatPanel.css';
+import '../styles/ChatPanel.css';
 import { messageService } from '../services/messageService';
 import { websocketService } from '../services/websocketService';
 
@@ -120,7 +120,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
 
   if (loading) {
-    return <div className="contacts-panel">Cargando contactos...</div>;
+    return <div className="contacts-panel">Cargando chats...</div>;
   }
 
   if (error) {

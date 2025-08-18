@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import './InfiniteScroll.css';
+import '../styles/InfiniteScroll.css';
+import Loader from './Loader';
 
 interface Message {
   id: string;
@@ -132,7 +133,7 @@ const InfiniteScroll: React.FC<InfiniteScrollProps> = ({
         <div className="load-more-indicator">
           {isLoadingOlder ? (
             <div className="loading-more">
-              <div className="loading-spinner"></div>
+              <Loader size={16} />
               <span>Cargando mensajes anteriores...</span>
             </div>
           ) : (
