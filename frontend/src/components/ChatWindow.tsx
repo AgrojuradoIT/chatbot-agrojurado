@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/ChatWindow.css';
+import '../styles/SearchInput.css';
 import InfiniteScroll from './InfiniteScroll';
 import MessageStatus from './MessageStatus';
 import Loader from './Loader';
+import SearchInput from './SearchInput';
 
 interface Message {
   id: string;
@@ -10,6 +12,10 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   status?: 'sending' | 'sent' | 'delivered' | 'error';
+  message_type?: 'text' | 'image' | 'video' | 'audio' | 'document';
+  media_id?: string;
+  media_url?: string;
+  mime_type?: string;
 }
 
 interface ChatWindowProps {
@@ -32,6 +38,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isLoadingMore = false,
   selectedChat
 }) => {
+  const [searchTerm, setSearchTerm] = useState(''); // Para la búsqueda de mensajes
+  const [showSearch, setShowSearch] = useState(false); // Para mostrar/ocultar el campo de búsqueda
+
   const formatPhoneNumber = (phone: string) => {
     // Formatear número de teléfono para mostrar
     if (phone.startsWith('57')) {
@@ -39,6 +48,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     return phone;
   };
+
+  // Filtrar mensajes basado en el término de búsqueda
+  const filteredMessages = messages.filter(message => {
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase().trim();
+    return message.text.toLowerCase().includes(searchLower);
+  });
+
+  // Función para manejar el toggle del campo de búsqueda
+  const handleSearchToggle = () => {
+    setShowSearch(!showSearch);
+    if (showSearch) {
+      setSearchTerm(''); // Limpiar búsqueda al cerrar
+    }
+  };
+
   return (
     <div className="chat-window">
       {selectedChat && (
@@ -52,10 +77,43 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div className="contact-phone">{formatPhoneNumber(selectedChat.phone)}</div>
             </div>
           </div>
+          
+          {/* Botón de búsqueda y campo desplegable */}
+          <div className="chat-search-container">
+            {!showSearch ? (
+              <button
+                className="search-toggle-btn"
+                onClick={handleSearchToggle}
+                title="Buscar en mensajes"
+              >
+                <span className="material-icons">search</span>
+              </button>
+            ) : (
+              <div className="search-expanded">
+                <SearchInput
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  placeholder="Buscar en mensajes..."
+                  resultsCount={filteredMessages.length}
+                  totalCount={messages.length}
+                  className="chat-search"
+                  showResultsInfo={false}
+                  showClearButton={false}
+                />
+                <button
+                  className="search-close-btn"
+                  onClick={handleSearchToggle}
+                  title="Cerrar búsqueda"
+                >
+                  <span className="material-icons">close</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
       <InfiniteScroll
-        messages={messages}
+        messages={filteredMessages}
         onLoadMore={onLoadMore || (() => {})}
         hasMore={hasMore}
         isLoading={isLoadingMore}
@@ -67,14 +125,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <span>Cargando mensajes...</span>
             </div>
           )}
-          {messages.map((message) => (
+          {filteredMessages.map((message) => (
             <div
               key={message.id}
               className={`message ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}
             >
               <div className="message-content">{message.text}</div>
               <MessageStatus 
-                status={message.status} 
+                status={message.sender === 'user' ? message.status : undefined} 
                 timestamp={message.timestamp} 
               />
             </div>

@@ -106,6 +106,12 @@ def create_indexes(engine, table_name):
                 # Índices para búsquedas por estado activo
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_active ON {table_name} (is_active);"))
                 conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_last_interaction ON {table_name} (last_interaction);"))
+            elif table_name == "payment_users":
+                # Índices para búsquedas por cédula y estado
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_cedula_active ON {table_name} (cedula, is_active);"))
+            elif table_name == "payment_receipts":
+                # Índices para búsquedas por cédula
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_cedula_active ON {table_name} (cedula, is_active);"))
             
             conn.commit()
             print(f"✅ Índices adicionales creados para '{table_name}'")
@@ -124,7 +130,9 @@ def create_whatsapp_users_table(engine):
             name VARCHAR(100),
             last_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
-            inactivity_warning_sent BOOLEAN DEFAULT FALSE
+            inactivity_warning_sent BOOLEAN DEFAULT FALSE,
+            conversation_state VARCHAR(50),
+            conversation_data VARCHAR(1000)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
         
@@ -143,7 +151,9 @@ def create_whatsapp_users_table(engine):
             'name': 'VARCHAR(100)',
             'last_interaction': 'TIMESTAMP',
             'is_active': 'BOOLEAN',
-            'inactivity_warning_sent': 'BOOLEAN'
+            'inactivity_warning_sent': 'BOOLEAN',
+            'conversation_state': 'VARCHAR(50)',
+            'conversation_data': 'VARCHAR(1000)'
         }
         
         missing_columns = []
@@ -159,6 +169,8 @@ def create_whatsapp_users_table(engine):
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} BOOLEAN DEFAULT FALSE;"
                     elif col_name == 'is_active':
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} BOOLEAN DEFAULT TRUE;"
+                    elif col_name in ['conversation_state', 'conversation_data']:
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type} NULL;"
                     else:
                         add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
                     
@@ -316,6 +328,133 @@ def create_templates_table(engine):
         # Crear índices adicionales
         create_indexes(engine, table_name)
 
+def create_payment_users_table(engine):
+    """Crea o actualiza la tabla payment_users"""
+    table_name = "payment_users"
+    
+    if not check_table_exists(engine, table_name):
+        # Crear tabla nueva
+        create_table_sql = """
+        CREATE TABLE payment_users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            cedula VARCHAR(20) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            expedition_date DATETIME NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_cedula (cedula),
+            INDEX idx_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        
+        with engine.connect() as conn:
+            conn.execute(text(create_table_sql))
+            conn.commit()
+        print(f"✅ Tabla '{table_name}' creada exitosamente")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
+    else:
+        # Verificar columnas existentes
+        existing_columns = get_table_columns(engine, table_name)
+        required_columns = {
+            'id': 'INT',
+            'cedula': 'VARCHAR(20)',
+            'name': 'VARCHAR(100)',
+            'expedition_date': 'DATETIME',
+            'is_active': 'BOOLEAN',
+            'created_at': 'TIMESTAMP',
+            'updated_at': 'TIMESTAMP'
+        }
+        
+        missing_columns = []
+        for col_name, col_type in required_columns.items():
+            if col_name not in existing_columns:
+                missing_columns.append((col_name, col_type))
+        
+        if missing_columns:
+            print(f"🔄 Actualizando tabla '{table_name}' con columnas faltantes...")
+            with engine.connect() as conn:
+                for col_name, col_type in missing_columns:
+                    if col_name == 'is_active':
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} BOOLEAN DEFAULT TRUE;"
+                    elif col_name == 'updated_at':
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;"
+                    else:
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
+                    
+                    conn.execute(text(add_column_sql))
+                conn.commit()
+            print(f"✅ Tabla '{table_name}' actualizada exitosamente")
+        else:
+            print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
+
+def create_payment_receipts_table(engine):
+    """Crea o actualiza la tabla payment_receipts"""
+    table_name = "payment_receipts"
+    
+    if not check_table_exists(engine, table_name):
+        # Crear tabla nueva
+        create_table_sql = """
+        CREATE TABLE payment_receipts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            cedula VARCHAR(20) NOT NULL,
+            file_path VARCHAR(500) NOT NULL,
+            file_name VARCHAR(200) NOT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_cedula (cedula),
+            INDEX idx_active (is_active),
+            FOREIGN KEY (cedula) REFERENCES payment_users(cedula) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
+        
+        with engine.connect() as conn:
+            conn.execute(text(create_table_sql))
+            conn.commit()
+        print(f"✅ Tabla '{table_name}' creada exitosamente")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
+    else:
+        # Verificar columnas existentes
+        existing_columns = get_table_columns(engine, table_name)
+        required_columns = {
+            'id': 'INT',
+            'cedula': 'VARCHAR(20)',
+            'file_path': 'VARCHAR(500)',
+            'file_name': 'VARCHAR(200)',
+            'is_active': 'BOOLEAN',
+            'created_at': 'TIMESTAMP'
+        }
+        
+        missing_columns = []
+        for col_name, col_type in required_columns.items():
+            if col_name not in existing_columns:
+                missing_columns.append((col_name, col_type))
+        
+        if missing_columns:
+            print(f"🔄 Actualizando tabla '{table_name}' con columnas faltantes...")
+            with engine.connect() as conn:
+                for col_name, col_type in missing_columns:
+                    if col_name == 'is_active':
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} BOOLEAN DEFAULT TRUE;"
+                    else:
+                        add_column_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"
+                    
+                    conn.execute(text(add_column_sql))
+                conn.commit()
+            print(f"✅ Tabla '{table_name}' actualizada exitosamente")
+        else:
+            print(f"✅ Tabla '{table_name}' ya existe y está actualizada")
+        
+        # Crear índices adicionales
+        create_indexes(engine, table_name)
+
 def main():
     """Función principal del script"""
     print("🔄 Iniciando actualización de la base de datos...")
@@ -344,6 +483,20 @@ def main():
         create_whatsapp_users_table(engine)
         create_messages_table(engine)
         create_templates_table(engine)
+        create_payment_users_table(engine)
+        create_payment_receipts_table(engine)
+        
+        # Crear directorios para comprobantes si no existen
+        receipts_dir = "static/receipts"
+        recent_dir = "static/receipts/recientes"
+        previous_dir = "static/receipts/anteriores"
+        
+        for directory in [receipts_dir, recent_dir, previous_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print(f"✅ Directorio creado: {directory}")
+            else:
+                print(f"✅ Directorio ya existe: {directory}")
         
         print("-" * 50)
         print("🎉 ¡Actualización de la base de datos completada exitosamente!")
@@ -353,12 +506,21 @@ def main():
         print("   ✅ Tabla 'whatsapp_users' verificada/creada")
         print("   ✅ Tabla 'messages' verificada/creada")
         print("   ✅ Tabla 'templates' verificada/creada")
+        print("   ✅ Tabla 'payment_users' verificada/creada")
+        print("   ✅ Tabla 'payment_receipts' verificada/creada")
         print("   ✅ Índices adicionales creados")
+        print("   ✅ Directorio de comprobantes creado")
         print("📸 Nuevas funcionalidades para plantillas con medios:")
         print("   - header_text: Texto del encabezado de la plantilla")
         print("   - media_type: Tipo de medio (IMAGE, VIDEO, DOCUMENT)")
         print("   - media_id: ID del medio subido a WhatsApp")
         print("   - image_url: URL de imagen para plantillas con URL")
+        print("🧾 Nuevas funcionalidades para comprobantes de pago:")
+        print("   - payment_users: Usuarios con información de pago")
+        print("   - payment_receipts: Comprobantes de pago con archivos PDF")
+        print("   - Validación de cédula colombiana")
+        print("   - Validación de fechas DD/MM/AAAA")
+        print("   - Envío automático de PDFs por WhatsApp")
         
     except SQLAlchemyError as e:
         print(f"❌ Error durante la actualización: {e}")

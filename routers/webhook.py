@@ -43,9 +43,20 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                             from_number = message.get("from")
                             message_type = message.get("type")
                             
-                            # Solo procesar mensajes de texto por ahora
+                            # Procesar mensajes de texto y respuestas de botones
+                            message_text = ""
+                            
                             if message_type == "text":
                                 message_text = message.get("text", {}).get("body", "")
+                            elif message_type == "interactive":
+                                # Procesar respuesta de botón interactivo
+                                interactive_data = message.get("interactive", {})
+                                if interactive_data.get("type") == "button_reply":
+                                    button_reply = interactive_data.get("button_reply", {})
+                                    message_text = button_reply.get("id", "")  # El ID del botón presionado
+                                    print(f"🔘 Botón presionado: ID='{message_text}', Título='{button_reply.get('title', '')}'")
+                            
+                            if message_text:  # Solo procesar si tenemos texto válido
                                 timestamp = message.get("timestamp")
                                 
                                 # Obtener información del contacto
@@ -94,6 +105,8 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                                 
                                 # Enviar a conexiones generales
                                 await manager.send_message_to_all(websocket_message)
+                            else:
+                                print(f"⚠️ Tipo de mensaje no soportado: {message_type}")
                         
                         # Procesar estados de mensajes
                         for status in value.get("statuses", []):

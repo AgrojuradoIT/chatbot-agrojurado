@@ -1,0 +1,227 @@
+/* Estilos modernos para modales */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #202c33;
+  padding: 20px;
+  border-radius: 10px;
+  width: 450px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid #374045;
+  overflow-x: hidden;
+}
+
+.modal h4 {
+  margin: 0 0 16px 0;
+  color: #e9edef;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #e9edef;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="tel"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #374045;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: #2a3942;
+  color: #e9edef;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #00a884;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.1);
+}
+
+.disabled-input {
+  background-color: #1a2a32 !important;
+  color: #8696a0 !important;
+  cursor: not-allowed;
+}
+
+.form-group input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.1);
+  accent-color: #00a884;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Estilo específico para labels que contienen checkbox */
+.checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  cursor: pointer;
+  font-weight: 500;
+  color: #e9edef;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 2px 0;
+  gap: 6px;
+  user-select: none;
+  width: 100%;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Estilos para input de teléfono con prefijo inhabilitado */
+.phone-input-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #374045;
+  border-radius: 6px;
+  background-color: #2a3942;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.phone-input-container:focus-within {
+  border-color: #00a884;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.1);
+}
+
+.phone-prefix {
+  background-color: #1a2a32;
+  color: #8696a0;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-right: 1px solid #374045;
+  user-select: none;
+  cursor: not-allowed;
+  flex-shrink: 0;
+}
+
+.phone-number-input {
+  flex: 1;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #e9edef;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.phone-number-input:focus {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.form-group input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  transform: scale(1.1) !important;
+  accent-color: #00a884 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  background: transparent;
+  color: #8696a0;
+  border: 2px solid #8696a0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+  min-width: 80px;
+}
+
+.modal-actions button:first-child {
+  background: transparent;
+  color: #00a884;
+  border: 2px solid #00a884;
+}
+
+.modal-actions button:first-child:hover {
+  background: #00a884;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.3);
+}
+
+.modal-actions button:last-child {
+  background: transparent;
+  color: #8696a0;
+  border: 2px solid #8696a0;
+}
+
+.modal-actions button:last-child:hover {
+  background: #8696a0;
+  color: #1a1a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(134, 150, 160, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modal {
+    width: 90vw;
+    max-width: 320px;
+    padding: 16px;
+    margin: 10px;
+  }
+  
+  .modal h4 {
+    font-size: 15px;
+  }
+  
+  .form-group input[type="text"],
+  .form-group input[type="tel"] {
+    font-size: 12px;
+    padding: 8px;
+  }
+}

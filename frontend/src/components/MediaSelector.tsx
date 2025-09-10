@@ -37,16 +37,16 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
     if (!file) return;
 
     // Validar formatos soportados por WhatsApp para plantillas
-    if (mode === 'template' && !isWhatsAppSupportedFormat(file.type)) {
+    if (mode === 'template' && !isWhatsAppSupportedFormat(file.type, file.name)) {
       showNotification({
         type: 'warning',
         title: 'Formato No Soportado',
-        message: `Formato no soportado por WhatsApp: ${file.type}. Formatos soportados para plantillas: Imágenes (JPEG, PNG), Videos (MP4), Documentos (PDF)`
+        message: `Formato no soportado por WhatsApp: ${file.type || file.name}. Formatos soportados para plantillas: Imágenes (JPEG, PNG), Videos (MP4, 3GPP), Documentos (PDF)`
       });
       return;
     }
 
-    const mediaType = getMediaType(file.type);
+    const mediaType = getMediaType(file.type, file.name);
     
     if (mode === 'template' && onFileSelected) {
       // Para plantillas, solo pasamos el archivo sin subirlo aún
@@ -84,15 +84,32 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
     }
   };
 
-  const getMediaType = (mimeType: string): string => {
+  const getMediaType = (mimeType: string, fileName?: string): string => {
+    // Detectar tipo basado en MIME type
     if (mimeType.startsWith('image/')) return 'IMAGE';
     if (mimeType.startsWith('video/')) return 'VIDEO';
     if (mimeType.startsWith('application/')) return 'DOCUMENT';
+    
+    // Si el MIME type no es claro, intentar detectar por extensión del archivo
+    if (fileName) {
+      const extension = fileName.toLowerCase().split('.').pop();
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension || '')) {
+        return 'IMAGE';
+      }
+      if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', '3gp', '3gpp'].includes(extension || '')) {
+        return 'VIDEO';
+      }
+      if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'].includes(extension || '')) {
+        return 'DOCUMENT';
+      }
+    }
+    
+    // Por defecto, asumir que es imagen
     return 'IMAGE';
   };
 
   // Validar formatos soportados por WhatsApp para plantillas multimedia
-  const isWhatsAppSupportedFormat = (mimeType: string): boolean => {
+  const isWhatsAppSupportedFormat = (mimeType: string, fileName?: string): boolean => {
     const supportedFormats = [
       // Imágenes
       'image/jpeg',
@@ -100,10 +117,25 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
       'image/png',
       // Videos
       'video/mp4',
+      'video/3gpp',
+      'video/3gp',
       // Documentos
       'application/pdf'
     ];
-    return supportedFormats.includes(mimeType.toLowerCase());
+    
+    // Verificar MIME type
+    if (supportedFormats.includes(mimeType.toLowerCase())) {
+      return true;
+    }
+    
+    // Si el MIME type no está en la lista, verificar por extensión del archivo
+    if (fileName) {
+      const extension = fileName.toLowerCase().split('.').pop();
+      const supportedExtensions = ['jpg', 'jpeg', 'png', 'mp4', '3gp', '3gpp', 'pdf'];
+      return supportedExtensions.includes(extension || '');
+    }
+    
+    return false;
   };
 
 
@@ -166,7 +198,7 @@ const MediaSelector: React.FC<MediaSelectorProps> = ({
             </LoadingButton>
             <p className="upload-hint">
               {mode === 'template' 
-                ? 'Formatos soportados por WhatsApp: JPEG, PNG, MP4, PDF'
+                ? 'Formatos soportados por WhatsApp: JPEG, PNG, MP4, 3GPP, PDF'
                 : 'Formatos soportados: JPG, PNG, GIF, MP4, PDF, DOC, etc.'}
             </p>
           </div>

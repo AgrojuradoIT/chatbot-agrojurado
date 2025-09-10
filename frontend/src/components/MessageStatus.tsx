@@ -22,28 +22,14 @@ const MessageStatus: React.FC<MessageStatusProps> = ({ status, timestamp }) => {
     }
   };
 
-  const getStatusText = () => {
-    switch (status) {
-      case 'sending':
-        return 'Enviando...';
-      case 'sent':
-        return 'Enviado';
-      case 'delivered':
-        return 'Entregado';
-      case 'error':
-        return 'Error';
-      default:
-        return '';
-    }
-  };
+
 
   return (
     <div className="message-status">
-      {status && getStatusIcon()}
-      {status && <span className="status-text">{getStatusText()}</span>}
       <span className="message-time">
         {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </span>
+      {status && getStatusIcon()}
     </div>
   );
 };

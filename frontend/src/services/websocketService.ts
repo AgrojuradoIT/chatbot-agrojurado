@@ -12,7 +12,7 @@ const getWebSocketUrl = (): string => {
 };
 
 export interface WebSocketMessage {
-  type: 'new_message' | 'template_updated' | 'contact_updated' | 'stats_updated';
+  type: 'new_message' | 'template_updated' | 'contact_updated' | 'stats_updated' | 'receipt_deleted' | 'receipt_moved' | 'receipt_uploaded';
   message?: {
     id: string;
     text: string;
@@ -25,6 +25,17 @@ export interface WebSocketMessage {
     template_id?: string;
     contact_phone?: string;
     action?: 'created' | 'updated' | 'deleted';
+    // Receipt events
+    receipt_id?: string;
+    filename?: string;
+    folder?: string;
+    source_folder?: string;
+    target_folder?: string;
+    original_filename?: string;
+    cedula?: string;
+    timestamp?: string;
+    size?: number;
+    size_formatted?: string;
   };
 }
 
@@ -111,6 +122,11 @@ export class WebSocketService {
         } else if (data.type === 'template_updated' || data.type === 'contact_updated' || data.type === 'stats_updated') {
           console.log('🔄 Actualización recibida:', data.type, data.data);
           // Procesar actualizaciones globales - notificar a todos los listeners
+          this.notifyListeners(data);
+          
+        } else if (data.type === 'receipt_deleted' || data.type === 'receipt_moved' || data.type === 'receipt_uploaded') {
+          console.log('📄 Evento de comprobante recibido:', data.type, data.data);
+          // Procesar eventos de comprobantes - notificar a todos los listeners
           this.notifyListeners(data);
         }
       } catch (error) {

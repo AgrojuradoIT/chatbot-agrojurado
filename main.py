@@ -4,7 +4,7 @@ from config.settings import settings
 from config.cors import setup_cors
 
 # Importar todos los routers
-from routers import auth, templates, contacts, messages, statistics, websocket, webhook
+from routers import auth, templates, contacts, messages, statistics, websocket, webhook, payments, receipts
 
 # =============================================================================
 # CONFIGURACIÓN INICIAL
@@ -42,6 +42,8 @@ app.include_router(templates.router)      # /api/templates/*
 app.include_router(contacts.router)       # /api/contacts/*
 app.include_router(messages.router)       # /api/messages/*
 app.include_router(statistics.router)     # /api/statistics/*
+app.include_router(payments.router)       # /api/payments/*
+app.include_router(receipts.router)   # /api/receipts/*
 app.include_router(webhook.router)        # /webhook/*
 
 # Registrar rutas WebSocket

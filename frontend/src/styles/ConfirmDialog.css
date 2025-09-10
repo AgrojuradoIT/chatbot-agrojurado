@@ -18,59 +18,59 @@
 .confirm-dialog {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 450px;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 380px;
   width: 90%;
   text-align: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
   animation: slideUp 0.3s ease;
 }
 
 /* Ícono de confirmación */
 .confirm-icon {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   display: flex;
   justify-content: center;
 }
 
 /* Contenido del diálogo */
 .confirm-content {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .confirm-title {
   color: #e9edef;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
   letter-spacing: 0.3px;
 }
 
 .confirm-message {
   color: #8696a0;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   margin: 0;
 }
 
 /* Acciones del diálogo */
 .confirm-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.confirm-btn {
-  padding: 10px 24px;
+.confirm-dialog .confirm-btn {
+  padding: 8px 16px !important;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px !important;
+  font-size: 13px !important;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 100px;
+  min-width: 80px !important;
 }
 
 /* Normalizador: evita heredar estilos globales de otros .confirm-btn */
@@ -79,80 +79,115 @@
   background: transparent;
 }
 
-/* Danger (rojo) */
-.confirm-btn.confirm-danger {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2) !important;
+/* Logout (rojo) */
+.confirm-btn.confirm-logout {
+  background: transparent !important;
+  color: #dc3545 !important;
+  border: 2px solid #dc3545 !important;
+  box-shadow: none !important;
 }
 
-.confirm-btn.confirm-danger:hover {
+.confirm-btn.confirm-logout:hover {
+  background: #dc3545 !important;
+  color: white !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
-  color: white !important;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
 }
 
-.confirm-btn.confirm-danger:focus {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-  color: white !important;
+.confirm-btn.confirm-logout:focus {
+  background: transparent !important;
+  color: #dc3545 !important;
+  border: 2px solid #dc3545 !important;
 }
 
 /* Warning (amarillo) */
 .confirm-btn.confirm-warning {
-  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
-  color: #212529 !important;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2) !important;
+  background: transparent !important;
+  color: #ffc107 !important;
+  border: 2px solid #ffc107 !important;
+  box-shadow: none !important;
 }
 
 .confirm-btn.confirm-warning:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4) !important;
-  background: linear-gradient(135deg, #ffca2c 0%, #e0a800 100%) !important;
+  background: #ffc107 !important;
   color: #212529 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3) !important;
 }
 
 .confirm-btn.confirm-warning:focus {
-  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
-  color: #212529 !important;
+  background: transparent !important;
+  color: #ffc107 !important;
+  border: 2px solid #ffc107 !important;
+}
+
+/* Delete (rojo como danger) */
+.confirm-btn.confirm-delete {
+  background: transparent !important;
+  color: #dc3545 !important;
+  border: 2px solid #dc3545 !important;
+  box-shadow: none !important;
+}
+
+.confirm-btn.confirm-delete:hover {
+  background: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+}
+
+.confirm-btn.confirm-delete:focus {
+  background: transparent !important;
+  color: #dc3545 !important;
+  border: 2px solid #dc3545 !important;
 }
 
 /* Info (azul) */
 .confirm-btn.confirm-info {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.2) !important;
+  background: transparent !important;
+  color: #17a2b8 !important;
+  border: 2px solid #17a2b8 !important;
+  box-shadow: none !important;
 }
 
 .confirm-btn.confirm-info:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4) !important;
-  background: linear-gradient(135deg, #1fc2d4 0%, #138496 100%) !important;
+  background: #17a2b8 !important;
   color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3) !important;
 }
 
 .confirm-btn.confirm-info:focus {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
-  color: white !important;
+  background: transparent !important;
+  color: #17a2b8 !important;
+  border: 2px solid #17a2b8 !important;
 }
 
-.cancel-btn {
-  background: transparent;
-  color: #8696a0;
-  border: 1px solid rgba(134, 150, 160, 0.3);
-  border-radius: 8px;
-  padding: 10px 24px;
-  font-size: 14px;
+.confirm-dialog .cancel-btn {
+  background: transparent !important;
+  color: #8696a0 !important;
+  border: 2px solid #8696a0 !important;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 100px;
+  min-width: 80px !important;
+  box-shadow: none !important;
 }
 
 .cancel-btn:hover {
-  background: rgba(134, 150, 160, 0.1);
-  border-color: rgba(134, 150, 160, 0.5);
-  color: #e9edef;
+  background: #8696a0 !important;
+  color: #1a1a1a !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(134, 150, 160, 0.3) !important;
+}
+
+.cancel-btn:focus {
+  background: transparent !important;
+  color: #8696a0 !important;
+  border: 2px solid #8696a0 !important;
 }
 
 /* Animaciones */
@@ -175,20 +210,22 @@
 /* Responsive */
 @media (max-width: 768px) {
   .confirm-dialog {
-    padding: 24px;
-    margin: 20px;
+    padding: 20px;
+    margin: 16px;
+    max-width: 320px;
   }
   
   .confirm-title {
-    font-size: 18px;
+    font-size: 16px;
   }
   
   .confirm-message {
-    font-size: 13px;
+    font-size: 12px;
   }
   
   .confirm-actions {
     flex-direction: column;
+    gap: 8px;
   }
   
   .confirm-btn,
@@ -199,7 +236,12 @@
 }
 
 /* Focus styles */
-.confirm-btn.confirm-danger:focus {
+.confirm-btn.confirm-logout:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3);
+}
+
+.confirm-btn.confirm-delete:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3);
 }

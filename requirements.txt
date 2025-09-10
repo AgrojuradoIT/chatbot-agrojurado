@@ -1,15 +1,10 @@
-fastapi
+fastapi[standard]
 uvicorn[standard]
 python-dotenv
-google-generativeai
 requests
 mysql-connector-python
 SQLAlchemy
-apscheduler
 pydantic
 websockets
 python-multipart
-alembic
 python-jose[cryptography]
-python-multipart
-aiofiles

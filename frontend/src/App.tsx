@@ -6,17 +6,20 @@ import ChatPanel from './components/ChatPanel';
 import TemplatePanel from './components/TemplatePanel';
 import ContactManager from './components/ContactManager';
 import StatisticsDashboard from './components/StatisticsDashboard';
+import ReceiptsPanel from './components/ReceiptsPanel';
 import LoginPage from './components/LoginPage';
 import AuthCallback from './components/AuthCallback';
 import { messageService } from './services/messageService';
 import { websocketService, type WebSocketMessage } from './services/websocketService';
 import { ContactProvider } from './contexts/ContactContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { NotificationProvider } from './components/NotificationContainer';
+import { NotificationProvider, useNotifications } from './components/NotificationContainer';
+import { ReceiptOperationProvider } from './contexts/ReceiptOperationContext';
 import { ProtectedComponent } from './components/ProtectedComponent';
 import { useConfirm } from './hooks/useConfirm';
 import ConfirmDialog from './components/ConfirmDialog';
 import Loader from './components/Loader';
+import GlobalOperationIndicator from './components/GlobalOperationIndicator';
 
 interface Message {
   id: string;
@@ -40,10 +43,11 @@ interface Chat {
 function Dashboard() {
   const { user, logout, isLoggingOut } = useAuth();
   const { confirm, confirmDialog } = useConfirm();
+  const { showNotification } = useNotifications();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'templates' | 'contacts' | 'statistics'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'templates' | 'contacts' | 'statistics' | 'comprobantes'>('chat');
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -72,7 +76,8 @@ function Dashboard() {
           id: wsMessage.message.id || `ws_${Date.now()}`,
           text: wsMessage.message.text,
           sender: wsMessage.message.sender === 'user' ? 'bot' : 'user',
-          timestamp: new Date(wsMessage.message.timestamp || Date.now())
+          timestamp: new Date(wsMessage.message.timestamp || Date.now()),
+          status: wsMessage.message.status || 'sent' // Agregar status para mensajes nuevos
         };
         
         // 1. SIEMPRE actualizar el caché si existe
@@ -106,6 +111,12 @@ function Dashboard() {
             }
           }, 50);
         }
+      }
+      
+      // Manejar actualizaciones de contactos
+      if (wsMessage.type === 'contact_updated') {
+        console.log('👥 Contacto actualizado:', wsMessage.data?.contact_phone, 'Acción:', wsMessage.data?.action);
+        // El contexto de contactos se encargará de actualizar automáticamente
       }
     });
 
@@ -161,15 +172,12 @@ function Dashboard() {
             : msg
         ));
         
-        // Mostrar mensaje de error
-        const errorMessage: Message = {
-          id: `error_${Date.now()}`,
-          text: 'Error al enviar el mensaje. Intenta nuevamente.',
-          sender: 'bot',
-          timestamp: new Date(),
-          status: 'error'
-        };
-        setMessages((prev) => [...prev, errorMessage]);
+        // Mostrar notificación de error usando el sistema de notificaciones
+        showNotification({
+          type: 'error',
+          title: 'Error al Enviar',
+          message: 'No se pudo enviar el mensaje. Intenta nuevamente.'
+        });
       } else {
         // Actualizar estado a enviado
         setMessages(prev => prev.map(msg => 
@@ -190,14 +198,12 @@ function Dashboard() {
           : msg
       ));
       
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        text: 'Error al enviar el mensaje. Intenta nuevamente.',
-        sender: 'bot',
-        timestamp: new Date(),
-        status: 'error'
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      // Mostrar notificación de error usando el sistema de notificaciones
+      showNotification({
+        type: 'error',
+        title: 'Error al Enviar',
+        message: 'No se pudo enviar el mensaje. Intenta nuevamente.'
+      });
     }
   };
 
@@ -270,7 +276,8 @@ function Dashboard() {
           id: msg.id,
           text: msg.text,
           sender: (msg.sender === 'user' ? 'bot' : 'user') as 'user' | 'bot',
-          timestamp: new Date(msg.timestamp)
+          timestamp: new Date(msg.timestamp),
+          status: msg.status || 'sent' // Agregar status, por defecto 'sent' para mensajes existentes
         }));
         
         // El backend ya envía los mensajes en orden cronológico correcto (antiguos primero, recientes después)
@@ -316,8 +323,9 @@ function Dashboard() {
   };
 
   const handleContactUpdate = () => {
-    // Implementar actualización de contactos
-    console.log('Actualizando contactos');
+    // Esta función se llama cuando se crean/actualizan/eliminan contactos manualmente
+    // El WebSocket se encargará de las actualizaciones automáticas
+    console.log('Contactos actualizados manualmente');
   };
 
   const handleSelectContactFromManager = (contact: any) => {
@@ -395,17 +403,20 @@ function Dashboard() {
       message: '¿Estás seguro de que quieres cerrar tu sesión? Tendrás que volver a iniciar sesión para acceder al sistema.',
       confirmText: 'Cerrar Sesión',
       cancelText: 'Cancelar',
-      type: 'danger'
+      type: 'logout'
     });
 
     if (confirmed) {
-      logout();
+    logout();
     }
   };
 
   return (
     <ContactProvider>
       <div className="App">
+        {/* Indicador global de operación */}
+        <GlobalOperationIndicator />
+        
         <div className="tab-navigation">
           <div className="app-title">
             <h1>Chatbot Agrojurado</h1>
@@ -442,6 +453,14 @@ function Dashboard() {
                 onClick={() => setActiveTab('statistics')}
               >
                 ESTADÍSTICAS
+              </button>
+            </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'comprobantes' ? 'active' : ''}`}
+                onClick={() => setActiveTab('comprobantes')}
+              >
+                COMPROBANTES
               </button>
             </ProtectedComponent>
           </div>
@@ -545,6 +564,17 @@ function Dashboard() {
                   ESTADÍSTICAS
                 </button>
               </ProtectedComponent>
+              <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'comprobantes' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('comprobantes');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  COMPROBANTES
+                </button>
+              </ProtectedComponent>
               
               <button 
                 className="mobile-logout-btn"
@@ -568,12 +598,12 @@ function Dashboard() {
                   </>
                 )}
               </button>
-              </div>
             </div>
+          </div>
         </div>
         <div className="App-content">
-          {/* Panel de chats siempre visible excepto en estadísticas */}
-          {activeTab !== 'statistics' && (
+          {/* Panel de chats siempre visible excepto en estadísticas y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
             <ChatPanel
               selectedChat={selectedChat}
               onSelectChat={handleSelectChat}
@@ -583,20 +613,37 @@ function Dashboard() {
             />
           )}
           
-          {/* Chat y área de entrada siempre visible excepto en estadísticas */}
-          {activeTab !== 'statistics' && (
+          {/* Chat y área de entrada siempre visible excepto en estadísticas y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
             <div className="chat-section">
-              <ChatWindow 
-                messages={messages} 
-                isLoading={isLoadingMessages}
-                onLoadMore={handleLoadMore}
-                hasMore={hasMoreOlder}
-                isLoadingMore={isLoadingMore}
-                selectedChat={selectedChat}
-              />
-              <ProtectedComponent permissions={['chatbot.messages.send.individual']} fallback={<div className="no-permission-input">No tienes permisos para enviar mensajes</div>}>
-                <InputArea onSendMessage={handleSendMessage} />
-              </ProtectedComponent>
+              {selectedChat ? (
+                <>
+                  <ChatWindow 
+                    messages={messages} 
+                    isLoading={isLoadingMessages}
+                    onLoadMore={handleLoadMore}
+                    hasMore={hasMoreOlder}
+                    isLoadingMore={isLoadingMore}
+                    selectedChat={selectedChat}
+                  />
+                  <ProtectedComponent permissions={['chatbot.messages.send.individual']} fallback={<div className="no-permission-input">No tienes permisos para enviar mensajes</div>}>
+                    <InputArea onSendMessage={handleSendMessage} />
+                  </ProtectedComponent>
+                </>
+              ) : (
+                <div className="no-chat-selected">
+                  <div className="no-chat-content">
+                    <div className="no-chat-icon">
+                      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="#00a884" fillOpacity="0.1"/>
+                        <path d="M12 8v8m-4-4h8" stroke="#00a884" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <h2>Inicia una conversación</h2>
+                    <p>Selecciona un chat, plantilla o contacto de la lista para empezar.</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
@@ -622,6 +669,14 @@ function Dashboard() {
             <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a las estadísticas</div>}>
               <StatisticsDashboard
                 isVisible={true}
+              />
+            </ProtectedComponent>
+          )}
+          
+          {activeTab === 'comprobantes' && (
+            <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los comprobantes</div>}>
+              <ReceiptsPanel
+                onClose={() => setActiveTab('chat')}
               />
             </ProtectedComponent>
           )}
@@ -660,7 +715,9 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <AppContent />
+        <ReceiptOperationProvider>
+          <AppContent />
+        </ReceiptOperationProvider>
       </NotificationProvider>
     </AuthProvider>
   );

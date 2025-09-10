@@ -148,27 +148,81 @@ async def send_template_to_contacts(
 ):
     """Envía una plantilla a múltiples contactos"""
     try:
+        from models.whatsapp_models import Message
+        from datetime import datetime
+        from utils.websocket_manager import manager
+        
         results = []
+        success_count = 0
+        
         for phone_number in request.phone_numbers:
             try:
                 result = send_whatsapp_template(
-                    phone_number=phone_number,
+                    to=phone_number,
                     template_name=request.template_name,
                     parameters=request.parameters
                 )
-                results.append({
-                    "phone_number": phone_number,
-                    "success": True,
-                    "message_id": result.get('messages', [{}])[0].get('id') if result else None
-                })
+                
+                if result:
+                    # Crear contenido de la plantilla para guardar
+                    template_content = f"Plantilla enviada: {request.template_name}"
+                    if request.parameters:
+                        template_content += f" con parámetros: {request.parameters}"
+                    
+                    # Guardar mensaje del bot
+                    bot_message_obj = Message(
+                        id=f"bot_template_{phone_number}_{int(datetime.utcnow().timestamp())}",
+                        phone_number=phone_number,
+                        sender='bot',
+                        content=template_content,
+                        status='sent'
+                    )
+                    db.add(bot_message_obj)
+                    db.commit()
+                    
+                    # Notificar a clientes conectados
+                    template_message_data = {
+                        "type": "new_message",
+                        "message": {
+                            "id": bot_message_obj.id,
+                            "text": bot_message_obj.content,
+                            "sender": "bot",
+                            "timestamp": bot_message_obj.timestamp.isoformat(),
+                            "phone_number": phone_number,
+                            "status": bot_message_obj.status
+                        }
+                    }
+                    
+                    await manager.send_message_to_phone(phone_number, template_message_data)
+                    await manager.send_message_to_all(template_message_data)
+                    
+                    results.append({
+                        "phone_number": phone_number,
+                        "success": True,
+                        "message_id": result.get('messages', [{}])[0].get('id') if result else None
+                    })
+                    success_count += 1
+                else:
+                    results.append({
+                        "phone_number": phone_number,
+                        "success": False,
+                        "error": "Error al enviar plantilla"
+                    })
+                    
             except Exception as e:
+                print(f"Error enviando plantilla a {phone_number}: {e}")
                 results.append({
                     "phone_number": phone_number,
                     "success": False,
                     "error": str(e)
                 })
         
-        return {"results": results}
+        return {
+            "template_name": request.template_name,
+            "total_contacts": len(request.phone_numbers),
+            "success_count": success_count,
+            "results": results
+        }
         
     except Exception as e:
         print(f"Error enviando plantilla: {e}")
@@ -338,69 +392,128 @@ async def send_template_with_media_to_contacts(
         media_type = "IMAGE"  # Default
         template_media_id = None
         
+        print(f"🔍 Buscando plantilla: {template_name}")
+        
         if templates_info and 'data' in templates_info:
             for template in templates_info['data']:
                 if template['name'] == template_name:
                     template_info = template
+                    print(f"✅ Plantilla encontrada: {template_name}")
+                    print(f"📋 Componentes de la plantilla: {template.get('components', [])}")
+                    
                     # Buscar componente de header para determinar el tipo y obtener media_id
                     for component in template.get('components', []):
                         if component.get('type') == 'HEADER':
                             format_type = component.get('format', '').upper()
+                            print(f"🎯 Componente HEADER encontrado con formato: {format_type}")
+                            
                             if format_type in ['IMAGE', 'VIDEO', 'DOCUMENT']:
                                 media_type = format_type
+                                print(f"🎨 Tipo de medio detectado: {media_type}")
+                                
                                 # Intentar extraer media_id del ejemplo
                                 example = component.get('example', {})
+                                print(f"📝 Ejemplo del componente: {example}")
+                                
                                 if 'header_handle' in example and example['header_handle']:
                                     # El header_handle puede contener el media_id o URL
                                     handle_data = example['header_handle']
+                                    print(f"🔗 Header handle encontrado: {handle_data}")
+                                    
                                     if isinstance(handle_data, list) and len(handle_data) > 0:
                                         # Si es una URL, intentar extraer ID o usar como media_id
                                         template_media_id = handle_data[0]
+                                        print(f"📎 Media ID extraído de lista: {template_media_id}")
                                     elif isinstance(handle_data, str):
                                         template_media_id = handle_data
+                                        print(f"📎 Media ID extraído de string: {template_media_id}")
+                            else:
+                                print(f"⚠️ Formato no reconocido: {format_type}")
                     break
+        else:
+            print(f"❌ No se pudieron obtener las plantillas de WhatsApp")
+        
+        print(f"🎯 Tipo de medio final: {media_type}")
+        print(f"📎 Media ID de la plantilla: {template_media_id}")
         
         # Si no tenemos media_id específico, usar el de la plantilla
         if not media_id and template_media_id:
             media_id = template_media_id
-            print(f" Usando media_id de la plantilla: {media_id}")
+            print(f"📎 Usando media_id de la plantilla: {media_id}")
         
         for phone_number in phone_numbers:
             try:
                 # Para plantillas multimedia, necesitamos obtener un media_id válido
                 if media_id and media_id.startswith('http'):
-                    # Si tenemos una URL, intentar subir la imagen para obtener media_id
-                    print(f" Subiendo imagen desde URL para obtener media_id válido...")
+                    # Si tenemos una URL, intentar subir el archivo para obtener media_id
+                    print(f" Subiendo archivo desde URL para obtener media_id válido...")
+                    print(f" Tipo de medio detectado: {media_type}")
                     try:
                         import requests
                         import tempfile
                         import os
+                        import mimetypes
                         
-                        # Descargar la imagen temporalmente
+                        # Descargar el archivo temporalmente
                         response = requests.get(media_id, timeout=10)
                         if response.status_code == 200:
-                            # Crear archivo temporal
-                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                            # Determinar la extensión correcta basada en el tipo de medio y la URL
+                            file_extension = '.png'  # Por defecto
+                            mime_type = 'image/png'  # Por defecto
+                            
+                            # Primero intentar detectar desde la URL
+                            url_lower = media_id.lower()
+                            if '.pdf' in url_lower:
+                                file_extension = '.pdf'
+                                mime_type = 'application/pdf'
+                            elif '.mp4' in url_lower:
+                                file_extension = '.mp4'
+                                mime_type = 'video/mp4'
+                            elif '.3gp' in url_lower or '.3gpp' in url_lower:
+                                file_extension = '.3gp'
+                                mime_type = 'video/3gpp'
+                            elif '.jpg' in url_lower or '.jpeg' in url_lower:
+                                file_extension = '.jpg'
+                                mime_type = 'image/jpeg'
+                            elif '.png' in url_lower:
+                                file_extension = '.png'
+                                mime_type = 'image/png'
+                            else:
+                                # Si no se puede detectar desde la URL, usar el media_type detectado
+                                if media_type == 'VIDEO':
+                                    file_extension = '.mp4'
+                                    mime_type = 'video/mp4'
+                                elif media_type == 'DOCUMENT':
+                                    file_extension = '.pdf'
+                                    mime_type = 'application/pdf'
+                                elif media_type == 'IMAGE':
+                                    file_extension = '.png'
+                                    mime_type = 'image/png'
+                            
+                            print(f" Usando extensión: {file_extension}, MIME type: {mime_type}")
+                            
+                            # Crear archivo temporal con la extensión correcta
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                                 temp_file.write(response.content)
                                 temp_path = temp_file.name
                             
                             # Subir a WhatsApp para obtener media_id
-                            whatsapp_media_id = upload_media_to_whatsapp(temp_path, "image/png")
+                            whatsapp_media_id = upload_media_to_whatsapp(temp_path, mime_type)
                             
                             # Limpiar archivo temporal
                             os.unlink(temp_path)
                             
                             if whatsapp_media_id:
-                                print(f" Media_id obtenido: {whatsapp_media_id}")
+                                print(f" Media_id obtenido: {whatsapp_media_id} (tipo: {media_type})")
                                 media_id = whatsapp_media_id
                             else:
-                                print(f" Error al subir imagen, usando plantilla regular")
+                                print(f" Error al subir archivo, usando plantilla regular")
                                 media_id = None
                         else:
-                            print(f" Error al descargar imagen: {response.status_code}")
+                            print(f" Error al descargar archivo: {response.status_code}")
                             media_id = None
                     except Exception as e:
-                        print(f" Error procesando imagen: {e}")
+                        print(f" Error procesando archivo: {e}")
                         media_id = None
                 
                 # Ahora enviar con el media_id correcto o como plantilla regular
@@ -512,6 +625,61 @@ async def create_template_with_file(
     logger.debug(f"User: {current_user.get('email', 'Unknown')}, Category: {category}, Media Type: {media_type}")
     
     try:
+        # Validar el tipo de archivo
+        import mimetypes
+        
+        # Obtener la extensión del archivo
+        file_extension = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
+        
+        # Mapeo de extensiones a tipos MIME para WhatsApp
+        extension_to_mime = {
+            # Imágenes
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            # Videos
+            'mp4': 'video/mp4',
+            '3gp': 'video/3gpp',
+            '3gpp': 'video/3gpp',
+            # Documentos
+            'pdf': 'application/pdf'
+        }
+        
+        # Detectar el tipo MIME del archivo
+        detected_mime = extension_to_mime.get(file_extension)
+        if not detected_mime:
+            detected_mime = file.content_type
+        
+        # Validar que el tipo MIME sea soportado por WhatsApp
+        whatsapp_supported_mimes = [
+            'image/jpeg', 'image/jpg', 'image/png',
+            'video/mp4', 'video/3gpp', 'video/3gp',
+            'application/pdf'
+        ]
+        
+        if detected_mime not in whatsapp_supported_mimes:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Formato de archivo no soportado: {detected_mime}. Formatos soportados: JPEG, PNG, MP4, 3GPP, PDF"
+            )
+        
+        # Detectar automáticamente el tipo de medio basado en el archivo
+        detected_media_type = "IMAGE"  # Por defecto
+        if detected_mime.startswith('image/'):
+            detected_media_type = "IMAGE"
+        elif detected_mime.startswith('video/'):
+            detected_media_type = "VIDEO"
+        elif detected_mime.startswith('application/'):
+            detected_media_type = "DOCUMENT"
+        
+        # Si el usuario especificó un tipo diferente, validar que sea compatible
+        if media_type.upper() != detected_media_type:
+            logger.warning(f"Tipo de medio especificado ({media_type}) no coincide con el detectado ({detected_media_type})")
+            # Usar el tipo detectado automáticamente
+            media_type = detected_media_type
+        
+        logger.info(f"Archivo: {file.filename}, MIME: {detected_mime}, Tipo: {media_type}")
+        
         # Guardar archivo temporalmente
         import tempfile
         import os
@@ -538,7 +706,13 @@ async def create_template_with_file(
                 return {
                     "success": True,
                     "message": "Template with media created successfully",
-                    "template": result
+                    "template": result,
+                    "detected_type": media_type,
+                    "file_info": {
+                        "filename": file.filename,
+                        "mime_type": detected_mime,
+                        "size": len(content_bytes)
+                    }
                 }
             else:
                 raise HTTPException(status_code=400, detail="Failed to create template with media")
@@ -548,6 +722,8 @@ async def create_template_with_file(
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
                 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error creating template with file: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating template: {str(e)}")

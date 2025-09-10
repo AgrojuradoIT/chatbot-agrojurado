@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/ChatPanel.css';
 import { messageService } from '../services/messageService';
 import { websocketService } from '../services/websocketService';
+import { useContacts } from '../contexts/ContactContext';
 
 interface Chat {
   id: string;
@@ -31,6 +32,25 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { contacts, refreshContacts } = useContacts(); // Obtener contactos del contexto
+
+  // Función para actualizar inmediatamente un contacto eliminado
+  const updateDeletedContact = (phoneNumber: string) => {
+    setChats(prevChats => {
+      const updatedChats = prevChats.map(chat => {
+        if (chat.phone === phoneNumber && chat.name !== 'Número Desconocido') {
+          console.log('🔄 Actualizando contacto eliminado:', phoneNumber);
+          return {
+            ...chat,
+            name: 'Número Desconocido', // Usar "Número Desconocido" cuando se elimina el contacto
+            isOnline: false // Marcar como no activo
+          };
+        }
+        return chat;
+      });
+      return updatedChats;
+    });
+  };
 
   const formatPhoneNumber = (phone: string) => {
     // Formatear número de teléfono para mostrar
@@ -73,42 +93,134 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     fetchChats();
   }, []);
 
+  // Sincronizar información de contactos con chats cuando cambien
+  useEffect(() => {
+    if (chats.length > 0) {
+      setChats(prevChats => {
+        const updatedChats = prevChats.map(chat => {
+          const contact = contacts.find(c => c.phone_number === chat.phone);
+          if (contact) {
+            // Contacto existe, usar su información
+            return {
+              ...chat,
+              name: contact.name,
+              isOnline: contact.is_active
+            };
+          } else {
+            // Contacto no existe (fue eliminado), usar "Número Desconocido"
+            return {
+              ...chat,
+              name: 'Número Desconocido', // Usar "Número Desconocido" cuando no hay contacto registrado
+              isOnline: false // Marcar como no activo
+            };
+          }
+        });
+        return updatedChats;
+      });
+    }
+  }, [contacts]); // Se ejecuta solo cuando cambian los contactos
+
+
+
   // Configurar WebSocket para actualizaciones en tiempo real
   useEffect(() => {
     websocketService.connect();
 
     const removeListener = websocketService.onMessage((message) => {
-      if (message.type === 'contact_updated') {
-        console.log('🔄 Actualizando lista de chats por:', message.type);
-        fetchChats();
-      } else if (message.type === 'new_message' && message.message) {
+      if (message.type === 'new_message' && message.message) {
         console.log('📨 Actualizando último mensaje en lista de chats para:', message.message.phone_number);
         
         // Verificación de seguridad de tipos
         const wsMessage = message.message;
         if (!wsMessage) return;
         
-        // Actualizar solo el último mensaje del chat específico SIN refrescar toda la lista
+        // Verificar si el contacto existe en el contexto
+        const contactExists = contacts.some(c => c.phone_number === wsMessage.phone_number);
+        
+        // Si el contacto no existe, podría ser un nuevo contacto creado automáticamente
+        if (!contactExists) {
+          console.log('🆕 Nuevo contacto detectado, actualizando lista de contactos:', wsMessage.phone_number);
+          // Actualizar la lista de contactos para incluir el nuevo contacto
+          refreshContacts();
+        }
+        
+        // Actualizar o agregar el chat según corresponda
         setChats(prevChats => {
-          const updatedChats = prevChats.map(chat => {
-            if (chat.phone === wsMessage.phone_number) {
-              return {
-                ...chat,
-                lastMessage: wsMessage.text,
-                lastMessageTime: new Date(wsMessage.timestamp),
-                lastMessageSender: wsMessage.sender
-              };
-            }
-            return chat;
-          });
+          const existingChatIndex = prevChats.findIndex(chat => chat.phone === wsMessage.phone_number);
           
-          // Reordenar para que el chat con mensaje más reciente esté arriba
-          return updatedChats.sort((a, b) => {
-            const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
-            const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
-            return timeB - timeA;
-          });
+          if (existingChatIndex >= 0) {
+            // Chat existe, actualizar solo el último mensaje
+            const updatedChats = prevChats.map(chat => {
+              if (chat.phone === wsMessage.phone_number) {
+                return {
+                  ...chat,
+                  lastMessage: wsMessage.text,
+                  lastMessageTime: new Date(wsMessage.timestamp),
+                  lastMessageSender: wsMessage.sender
+                };
+              }
+              return chat;
+            });
+            
+            // Reordenar para que el chat con mensaje más reciente esté arriba
+            return updatedChats.sort((a, b) => {
+              const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+              const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+              return timeB - timeA;
+            });
+          } else {
+            // Chat no existe, agregarlo solo si tiene mensaje
+            const newChat = {
+              id: wsMessage.phone_number,
+              name: wsMessage.phone_number, // Usar número como nombre temporal
+              phone: wsMessage.phone_number,
+              isOnline: false,
+              lastMessage: wsMessage.text,
+              lastMessageTime: new Date(wsMessage.timestamp),
+              lastMessageSender: wsMessage.sender
+            };
+            
+            // Agregar al inicio y reordenar
+            const updatedChats = [newChat, ...prevChats];
+            return updatedChats.sort((a, b) => {
+              const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+              const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+              return timeB - timeA;
+            });
+          }
         });
+      }
+      
+      // Manejar actualizaciones de contactos (nombre, estado activo, eliminación)
+      if (message.type === 'contact_updated' && message.data) {
+        console.log('👥 Actualizando información de contacto en lista de chats:', message.data);
+        
+        const { contact_phone, action } = message.data;
+        
+        if (action === 'deleted' && contact_phone) {
+          // Cuando se elimina un contacto, actualizar inmediatamente
+          console.log('🗑️ Contacto eliminado via WebSocket, actualizando chat:', contact_phone);
+          updateDeletedContact(contact_phone);
+        } else if (action === 'updated' || action === 'created') {
+          // Actualizar información del contacto usando el contexto
+          setChats(prevChats => {
+            const updatedChats = prevChats.map(chat => {
+              if (chat.phone === contact_phone) {
+                // Buscar el contacto actualizado en el contexto
+                const updatedContact = contacts.find(c => c.phone_number === contact_phone);
+                if (updatedContact) {
+                  return {
+                    ...chat,
+                    name: updatedContact.name,
+                    isOnline: updatedContact.is_active
+                  };
+                }
+              }
+              return chat;
+            });
+            return updatedChats;
+          });
+        }
       }
     });
 

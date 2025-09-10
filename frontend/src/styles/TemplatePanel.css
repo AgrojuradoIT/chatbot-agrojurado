@@ -74,6 +74,7 @@
 
 
 
+
 .whatsapp-info {
   background: linear-gradient(135deg, #1a2a32 0%, #202c33 100%);
   border: 1px solid rgba(0, 168, 132, 0.2);
@@ -137,7 +138,7 @@
   font-size: 14px;
 }
 
-.error {
+.template-error {
   text-align: center;
   padding: 20px;
   color: #f44336;
@@ -352,59 +353,258 @@
 
 /* Estilos para información de multimedia */
 .template-media-info {
-  background-color: #1a2332;
-  padding: 8px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  border: 1px solid #95979a;
-}
-
-.media-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.media-indicator .material-icons {
-  font-size: 16px;
-  color: #4ade80;
-}
-
-.media-label {
-  color: #4ade80;
-  font-size: 12px;
-  font-weight: bold;
+  background: linear-gradient(135deg, #1a2332 0%, #1e293b 100%);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .header-text {
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid #00a884;
+}
+
+.header-text strong {
+  color: #00a884;
+  font-weight: 600;
 }
 
 .template-media-preview {
-  margin-bottom: 8px;
+  margin: 12px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
 }
 
 .template-media-preview img {
-  max-width: 150px;
-  max-height: 100px;
-  border-radius: 4px;
-  border: 1px solid #374151;
+  max-width: 200px;
+  max-height: 140px;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
   object-fit: cover;
-  overflow-wrap: break-word;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(10px);
+}
+
+/* Mejoras para diferentes tamaños de imagen */
+.template-media-preview img[src*=".jpg"],
+.template-media-preview img[src*=".jpeg"] {
+  border-color: rgba(0, 168, 132, 0.2);
+}
+
+.template-media-preview img[src*=".png"] {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Efecto de carga suave */
+.template-media-preview img {
+  opacity: 0;
+  animation: fadeInImage 0.5s ease-out forwards;
+}
+
+@keyframes fadeInImage {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Mejoras para imágenes con error */
+.template-media-preview img[style*="display: none"] {
+  display: none !important;
+}
+
+/* Contenedor alternativo para imágenes que fallan */
+.template-media-preview::after {
+  content: '🖼️';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  opacity: 0.3;
+  display: none;
+}
+
+.template-media-preview:has(img[style*="display: none"])::after {
+  display: block;
+}
+
+/* Estilos para información de archivos (videos y documentos) */
+.template-file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #2a3744 0%, #334155 100%);
+  border-radius: 8px;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  margin-top: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.template-file-info:hover {
+  background: linear-gradient(135deg, #334155 0%, #475569 100%);
+  border-color: rgba(75, 85, 99, 0.5);
+  transform: translateY(-1px);
+}
+
+.template-file-info .file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-file-info .file-icon .material-icons {
+  font-size: 20px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  transition: all 0.3s ease;
+}
+
+.template-file-info:hover .file-icon .material-icons {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.template-file-info .file-label {
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.template-file-info .file-id {
+  color: #94a3b8;
+  font-size: 11px;
+  background: rgba(55, 65, 81, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+/* Estilos para el contenido principal de la plantilla */
+.template-content p {
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 16px 0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  text-align: left;
+  word-wrap: break-word;
+  hyphens: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.template-content p::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 168, 132, 0.3) 50%, transparent 100%);
+}
+
+.template-content p:first-of-type {
+  margin-top: 0;
+}
+
+.template-content p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Mejoras para texto largo */
+.template-content p:not(:last-child) {
+  margin-bottom: 12px;
+}
+
+/* Estilos especiales para contenido con enlaces */
+.template-content p a {
+  color: #00a884;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 168, 132, 0.3);
+  transition: all 0.3s ease;
+}
+
+.template-content p a:hover {
+  color: #00d4aa;
+  border-bottom-color: #00d4aa;
+  background: rgba(0, 168, 132, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* Mejoras para listas si las hay */
+.template-content ul,
+.template-content ol {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.template-content li {
+  color: #e2e8f0;
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+/* Mejoras para texto destacado */
+.template-content strong,
+.template-content b {
+  color: #f1f5f9;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.template-content em,
+.template-content i {
+  color: #cbd5e1;
+  font-style: italic;
 }
 
 .template-footer {
-  font-size: 11px;
+  font-size: 12px;
   color: #00a884;
-  background: linear-gradient(135deg, rgba(0, 168, 132, 0.1) 0%, rgba(0, 143, 114, 0.05) 100%);
-  padding: 6px 10px;
-  border-radius: 6px;
-  margin-top: 8px;
-  border-left: 2px solid #00a884;
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.08) 0%, rgba(0, 143, 114, 0.04) 100%);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 12px;
+  border-left: 3px solid #00a884;
   font-weight: 500;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
+  box-shadow: 0 2px 6px rgba(0, 168, 132, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.template-footer small {
+  color: #00a884;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .template-actions {
@@ -516,32 +716,50 @@
 
 .modal {
   background: #202c33;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 32px;
   width: 90%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
+/* Scrollbar personalizado estilo WhatsApp */
+.modal::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal::-webkit-scrollbar-track {
+  background: #111b21;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: #374045;
+  border-radius: 2px;
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+  background: #4a5a63;
+}
+
 .modal h4 {
   margin: 0 0 20px 0;
   color: #e9edef;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #ffffff;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #e9edef;
   font-size: 13px;
 }
 
@@ -549,9 +767,9 @@
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid #374045;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
   background-color: #2a3942;
@@ -574,22 +792,23 @@
 
 .modal-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .modal-actions button {
-  background: linear-gradient(135deg, #374045 0%, #2a383e 100%);
-  border: 1px solid #4a5a63;
-  color: #e9edef;
+  background: transparent;
+  color: #8696a0;
+  border: 2px solid #8696a0;
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   outline: none;
+  min-width: 80px;
 }
 
 .modal-actions button:focus {
@@ -597,34 +816,43 @@
 }
 
 .modal-actions button:first-child {
-  background: linear-gradient(135deg, #00a884 0%, #008f72 100%);
-  border-color: #00a884;
-  color: white;
+  background: transparent;
+  color: #00a884;
+  border: 2px solid #00a884;
 }
 
 .modal-actions button:first-child:hover:not(:disabled) {
-  background: linear-gradient(135deg, #008f72 0%, #007a5f 100%);
+  background: #00a884;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.3);
 }
 
 .modal-actions button:last-child {
-  background: linear-gradient(135deg, #374045 0%, #2a383e 100%);
-  border-color: #4a5a63;
+  background: transparent;
+  color: #8696a0;
+  border: 2px solid #8696a0;
 }
 
 .modal-actions button:last-child:hover {
-  background: linear-gradient(135deg, #4a5a63 0%, #374045 100%);
-  border-color: #5a6a73;
+  background: #8696a0;
+  color: #1a1a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(134, 150, 160, 0.3);
 }
 
 .modal-actions button:disabled {
-  opacity: 0.7;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
 
 .modal-actions button:disabled:hover {
-  background: linear-gradient(135deg, #374045 0%, #2a383e 100%);
+  background: transparent;
+  color: #8696a0;
+  border: 2px solid #8696a0;
   transform: none;
+  box-shadow: none;
 }
 
 /* Scrollbar personalizado estilo WhatsApp */
@@ -1287,38 +1515,7 @@
   border-top: 1px solid #e0e0e0;
 }
 
-.modal-actions button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.modal-actions button:first-child {
-  background: #2196f3;
-  color: white;
-}
-
-.modal-actions button:first-child:hover:not(:disabled) {
-  background: #1976d2;
-}
-
-.modal-actions button:last-child {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.modal-actions button:last-child:hover {
-  background: #e0e0e0;
-}
-
-.modal-actions button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
+/* Estilos unificados para botones de modal - ya definidos arriba */
 
 /* Responsive para el modal */
 @media (max-width: 768px) {
@@ -1535,4 +1732,34 @@
 .help-section strong {
   color: #e9edef;
   font-weight: 600;
+}
+
+/* Mejoras generales para las tarjetas de plantillas */
+.template-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* Mejoras para el scroll y hover */
+.template-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.template-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.template-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.template-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.template-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }

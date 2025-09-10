@@ -5,7 +5,7 @@ export interface ConfirmOptions {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'logout' | 'delete' | 'warning' | 'info';
 }
 
 export interface ConfirmDialogState extends ConfirmOptions {

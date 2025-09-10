@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { contactService } from '../services/contactService';
 import type { Contact, ContactCreateRequest } from '../services/contactService';
 import ContactImport from './ContactImport';
+import SearchInput from './SearchInput';
 import '../styles/ContactImport.css';
+import '../styles/ContactManager.css';
+import '../styles/SearchInput.css';
 import { useContacts } from '../contexts/ContactContext';
 import { ContactProtected } from './ProtectedComponent';
 import { useNotifications } from './NotificationContainer';
@@ -31,6 +34,47 @@ const ContactManager: React.FC<ContactManagerProps> = ({
     name: '',
     is_active: true
   });
+  
+  const [phoneInputValue, setPhoneInputValue] = useState('+57'); // Para el input visual con +57
+  const [searchTerm, setSearchTerm] = useState(''); // Para la búsqueda
+
+  // Efecto para inicializar el input cuando se abre el modal
+  useEffect(() => {
+    if (showCreateModal) {
+      setPhoneInputValue('+57');
+      setNewContact(prev => ({ ...prev, phone_number: '' }));
+    }
+  }, [showCreateModal]);
+
+  // Filtrar contactos basado en el término de búsqueda
+  const filteredContacts = contacts.filter(contact => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    const nameMatch = contact.name.toLowerCase().includes(searchLower);
+    
+    // Solo buscar en teléfono si el término de búsqueda contiene números
+    const hasNumbers = /\d/.test(searchTerm);
+    let phoneMatch = false;
+    
+    if (hasNumbers) {
+      const cleanSearch = searchTerm.replace(/\D/g, '');
+      const cleanPhone = contact.phone_number.replace(/\D/g, '');
+      phoneMatch = cleanPhone.includes(cleanSearch);
+    }
+    
+    return nameMatch || phoneMatch;
+  });
+
+
+  // Función para manejar el cambio en el input de teléfono
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 10) {
+      setPhoneInputValue(`+57${value}`);
+      setNewContact(prev => ({ ...prev, phone_number: `57${value}` }));
+    }
+  };
 
   const handleCreateContact = async () => {
     if (!newContact.phone_number || !newContact.name) {
@@ -42,12 +86,24 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       return;
     }
 
+    // Validar que el número tenga el formato correcto (57 + 10 dígitos)
+    const cleanNumber = newContact.phone_number.replace(/\D/g, '');
+    if (cleanNumber.length !== 12 || !cleanNumber.startsWith('57')) {
+      showNotification({
+        type: 'warning',
+        title: 'Número Inválido',
+        message: 'El número debe tener 10 dígitos (sin incluir el código de país).'
+      });
+      return;
+    }
+
     try {
       await contactService.createContact({
         ...newContact,
         is_active: true // Por defecto, los contactos creados están activos
       });
       setNewContact({ phone_number: '', name: '', is_active: true });
+      setPhoneInputValue('+57'); // Resetear el input visual
       setShowCreateModal(false);
       // No recargar aquí, el contexto se encargará de actualizar
       onContactUpdate?.();
@@ -99,7 +155,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       message: '¿Estás seguro de que quieres eliminar este contacto? Esta acción no se puede deshacer.',
       confirmText: 'Eliminar',
       cancelText: 'Cancelar',
-      type: 'danger'
+      type: 'delete'
     });
 
     if (!confirmed) {
@@ -176,11 +232,21 @@ const ContactManager: React.FC<ContactManagerProps> = ({
         </div>
       </div>
 
+      {/* Campo de búsqueda */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Buscar contactos por nombre o teléfono..."
+        resultsCount={filteredContacts.length}
+        totalCount={contacts.length}
+        className="contact-search"
+      />
+
       {loading && <div className="loading">Cargando contactos...</div>}
-      {error && <div className="error">{error}</div>}
+              {error && <div className="template-error">{error}</div>}
 
       <div className="contacts-list">
-        {!loading && !error && contacts.map((contact) => (
+        {!loading && !error && filteredContacts.map((contact) => (
           <div 
             key={contact.phone_number} 
             className="contact-item"
@@ -230,7 +296,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
           </div>
         ))}
         
-        {!loading && !error && contacts.length === 0 && (
+        {!loading && !error && filteredContacts.length === 0 && (
           <div className="no-contacts">
             <p>No hay contactos registrados</p>
             <p>Crea tu primer contacto para comenzar</p>
@@ -254,12 +320,16 @@ const ContactManager: React.FC<ContactManagerProps> = ({
             </div>
             <div className="form-group">
               <label>Número de teléfono:</label>
-              <input
-                type="tel"
-                value={newContact.phone_number}
-                onChange={(e) => setNewContact({ ...newContact, phone_number: e.target.value })}
-                placeholder="57XXXXXXXXX"
-              />
+              <div className="phone-input-container">
+                <span className="phone-prefix">+57</span>
+                <input
+                  type="tel"
+                  value={phoneInputValue.replace('+57', '')}
+                  onChange={handlePhoneInputChange}
+                  placeholder="3XX XXX XXXX"
+                  className="phone-number-input"
+                />
+              </div>
             </div>
             <div className="modal-actions">
               <button onClick={handleCreateContact}>Crear</button>

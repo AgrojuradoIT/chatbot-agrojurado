@@ -31,6 +31,8 @@ class WhatsappUser(Base):
     last_interaction = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
     inactivity_warning_sent = Column(Boolean, default=False)
+    conversation_state = Column(String(50), nullable=True)  # Estado de la conversación
+    conversation_data = Column(String(1000), nullable=True)  # Datos temporales de la conversación (JSON)
 
 class Message(Base):
     __tablename__ = "messages"

@@ -12,8 +12,8 @@ class Settings:
     APP_VERSION: str = "1.0.0"
     
     # Configuración del servidor
-    HOST: str = "127.0.0.1"
-    PORT: int = 8000
+    HOST: str = os.getenv("HOST", "127.0.0.1")
+    PORT: int = int(os.getenv("PORT", "8000"))
     
     # WhatsApp Configuration
     WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
@@ -49,8 +49,10 @@ class Settings:
     
     # CORS Configuration
     CORS_ORIGINS: list = [
-        "http://localhost:5173",  # Frontend URL
-        "http://localhost:8000",  # Backend URL
+        "http://localhost:5173",  # Frontend URL desarrollo
+        "http://localhost:8000",  # Backend URL desarrollo
+        "https://chatbotapi.agrojurado.com",  # Tu dominio de producción
+        "https://www.agrojurado.com",  # Tu dominio con www
     ]
     
     def __init__(self):

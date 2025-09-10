@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/TemplatePanel.css';
+import '../styles/SearchInput.css';
 import { templateService } from '../services/templateService';
 import type { TemplateWithMediaRequest } from '../services/templateService';
 import { useContacts } from '../contexts/ContactContext';
@@ -7,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getAuthHeaders } from '../utils/auth';
 import MediaSelector from './MediaSelector';
 import LoadingButton from './LoadingButton';
+import SearchInput from './SearchInput';
 import { TemplateProtected } from './ProtectedComponent';
 import { useNotifications } from './NotificationContainer';
 import { useConfirm } from '../hooks/useConfirm';
@@ -30,6 +32,43 @@ interface Template {
   header_handle?: string;
 }
 
+// Función para detectar el tipo específico de archivo
+const getFileTypeInfo = (template: Template) => {
+  if (!template.header_handle) return null;
+  
+  const handle = Array.isArray(template.header_handle) 
+    ? template.header_handle[0] 
+    : template.header_handle;
+  
+  // Detectar tipo desde la URL
+  const url = handle.toLowerCase();
+  
+  if (template.media_type === 'IMAGE') {
+    if (url.includes('.jpg') || url.includes('.jpeg')) {
+      return { type: 'JPEG', icon: 'image', label: 'Archivo JPEG', color: '#00a884' };
+    } else if (url.includes('.png')) {
+      return { type: 'PNG', icon: 'image', label: 'Archivo PNG', color: '#00a884' };
+    } else {
+      return { type: 'IMAGEN', icon: 'image', label: 'Archivo de imagen', color: '#00a884' };
+    }
+  } else if (template.media_type === 'VIDEO') {
+    if (url.includes('.mp4')) {
+      return { type: 'MP4', icon: 'videocam', label: 'Archivo MP4', color: '#f59e0b' };
+    } else if (url.includes('.3gp') || url.includes('.3gpp')) {
+      return { type: '3GPP', icon: 'videocam', label: 'Archivo 3GPP', color: '#f59e0b' };
+    } else {
+      return { type: 'VIDEO', icon: 'videocam', label: 'Archivo de video', color: '#f59e0b' };
+    }
+  } else if (template.media_type === 'DOCUMENT') {
+    if (url.includes('.pdf')) {
+      return { type: 'PDF', icon: 'picture_as_pdf', label: 'Archivo PDF', color: '#ef4444' };
+    } else {
+      return { type: 'DOCUMENTO', icon: 'description', label: 'Archivo de documento', color: '#6b7280' };
+    }
+  }
+  
+  return null;
+};
 
 
 interface TemplatePanelProps {
@@ -61,6 +100,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const [archivingTemplate, setArchivingTemplate] = useState<string | null>(null);
   const [isSendingTemplate, setIsSendingTemplate] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(''); // Para la búsqueda
 
   useEffect(() => {
     fetchTemplates();
@@ -79,6 +119,17 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     };
   }, []);
 
+  // Filtrar plantillas basado en el término de búsqueda
+  const filteredTemplates = (showArchivedTemplates ? archivedTemplates : templates).filter(template => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    const nameMatch = template.name.toLowerCase().includes(searchLower);
+    const contentMatch = template.content.toLowerCase().includes(searchLower);
+    const categoryMatch = template.category.toLowerCase().includes(searchLower);
+    const statusMatch = template.status.toLowerCase().includes(searchLower);
+    return nameMatch || contentMatch || categoryMatch || statusMatch;
+  });
 
 
   const fetchTemplates = async () => {
@@ -562,6 +613,16 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
             Archivadas ({archivedTemplates.length})
           </button>
         </div>
+
+        {/* Campo de búsqueda */}
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Buscar plantillas por nombre, contenido, categoría o estado..."
+          resultsCount={filteredTemplates.length}
+          totalCount={(showArchivedTemplates ? archivedTemplates : templates).length}
+          className="template-search"
+        />
         {showWhatsAppInfo && (
           <div className="whatsapp-info">
             <p>📱<strong>Importante:</strong> Las plantillas requieren aprobación de WhatsApp y puede tomar de 24-48 horas.</p>
@@ -577,8 +638,8 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
 
       <div className="template-list">
         {loading && <div className="loading">Cargando plantillas...</div>}
-        {error && <div className="error">{error}</div>}
-        {!loading && !error && (showArchivedTemplates ? archivedTemplates : templates).map((template) => (
+        {error && <div className="template-error">{error}</div>}
+        {!loading && !error && filteredTemplates.map((template) => (
           <div
             key={template.id}
             className={`template-item ${
@@ -633,21 +694,12 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                 {/* Mostrar información de multimedia si existe */}
                 {(template.has_media || template.media_type) && (
                   <div className="template-media-info">
-                    <div className="media-indicator">
-                      <span className="material-icons">
-                        {template.media_type === 'IMAGE' ? 'image' : 
-                         template.media_type === 'VIDEO' ? 'videocam' : 'description'}
-                      </span>
-                      <span className="media-label">
-                        {template.media_type === 'IMAGE' ? 'IMAGEN' : 
-                         template.media_type === 'VIDEO' ? 'VIDEO' : 'DOCUMENTO'}
-                      </span>
-                    </div>
                     {template.header_text && (
                       <div className="header-text">
                         <strong>Encabezado:</strong> {template.header_text}
                       </div>
                     )}
+                    {/* Mostrar vista previa solo para imágenes */}
                     {template.header_handle && template.media_type === 'IMAGE' && (
                       <div className="template-media-preview">
                         <img 
@@ -660,9 +712,41 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                         />
                       </div>
                     )}
+                    {/* Mostrar información de archivo para videos y documentos */}
+                    {(template.media_type === 'VIDEO' || template.media_type === 'DOCUMENT') && template.header_handle && (
+                      <div className="template-file-info">
+                        {(() => {
+                          const fileInfo = getFileTypeInfo(template);
+                          return (
+                            <>
+                              <span className="file-icon">
+                                <span 
+                                  className="material-icons"
+                                  style={{ color: fileInfo?.color || '#00a884' }}
+                                >
+                                  {fileInfo?.icon || 'description'}
+                                </span>
+                              </span>
+                              <span className="file-label">
+                                {fileInfo?.label || 'Archivo'}
+                              </span>
+                              {template.media_id && (
+                                <span className="file-id">ID: {template.media_id}</span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
-                <p>{template.content}</p>
+                
+                {/* Contenido principal de la plantilla */}
+                {template.content && (
+                  <p>{template.content}</p>
+                )}
+                
+                {/* Pie de página de la plantilla */}
                 {template.footer && (
                   <div className="template-footer">
                     <small>{template.footer}</small>
