@@ -1,7 +1,12 @@
 from fastapi import FastAPI
-from database import Base, engine
+from database import Base, engine, wait_for_database, test_connection
 from config.settings import settings
 from config.cors import setup_cors
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Importar todos los routers
 from routers import auth, templates, contacts, messages, statistics, websocket, webhook, payments, receipts
@@ -10,8 +15,18 @@ from routers import auth, templates, contacts, messages, statistics, websocket, 
 # CONFIGURACIÓN INICIAL
 # =============================================================================
 
+# Esperar a que la base de datos esté disponible
+if not wait_for_database():
+    logger.error("No se pudo conectar a la base de datos. La aplicación no se iniciará.")
+    exit(1)
+
 # Crear tablas de la base de datos
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("✅ Tablas de la base de datos creadas/verificadas correctamente")
+except Exception as e:
+    logger.error(f"❌ Error al crear tablas de la base de datos: {e}")
+    exit(1)
 
 # Crear instancia de FastAPI
 app = FastAPI(
@@ -35,6 +50,19 @@ print(f"VERIFY_TOKEN: {settings.WHATSAPP_VERIFY_TOKEN}")
 async def root():
     """Ruta raíz de la API"""
     return {"message": "WhatsApp Chatbot API - Agropecuaria Juradó S.A.S"}
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Verifica el estado de la aplicación y la base de datos"""
+    db_status = test_connection()
+    
+    return {
+        "status": "healthy" if db_status else "unhealthy",
+        "database": "connected" if db_status else "disconnected",
+        "app_name": settings.APP_NAME,
+        "version": settings.APP_VERSION
+    }
 
 # Registrar todos los routers
 app.include_router(auth.router)           # /auth/*

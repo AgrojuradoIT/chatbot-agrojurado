@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from database import get_db
+from database import get_db, get_db_sync
 from models.whatsapp_models import Message, WhatsappUser
 from middleware.auth import get_current_user
 from middleware.permissions import require_permission

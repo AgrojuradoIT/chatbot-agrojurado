@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Query, Depends
 from sqlalchemy.orm import Session
-from database import get_db
+from database import get_db, get_db_sync
 from models.whatsapp_models import WebhookRequest, Message
 from utils.websocket_manager import manager
 from routers.websocket import process_message
@@ -24,11 +24,15 @@ async def verify_webhook(
         raise HTTPException(status_code=403, detail="Forbidden")
 
 @router.post("/")
-async def receive_webhook(request: Request, db: Session = Depends(get_db)):
+async def receive_webhook(request: Request):
     """Recibe webhooks de WhatsApp Business API"""
+    db = None
     try:
         body = await request.json()
         print(f"Webhook recibido: {body}")
+        
+        # Obtener conexión a la base de datos
+        db = get_db_sync()
         
         # Procesar el webhook
         if body.get("object") == "whatsapp_business_account":
@@ -142,3 +146,6 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Error processing webhook: {str(e)}")
         return {"status": "error", "message": str(e)}
+    finally:
+        if db:
+            db.close()

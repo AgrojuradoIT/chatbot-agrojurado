@@ -1,7 +1,7 @@
 /* Contenedor de notificaciones */
 .notification-container {
   position: fixed;
-  bottom: 20px;
+  top: 20px;
   right: 20px;
   z-index: 9999;
   display: flex;
@@ -26,12 +26,12 @@
   max-width: 400px;
   position: relative;
   overflow: hidden;
-  animation: slideInUp 0.3s ease-out;
+  animation: slideInRight 0.3s ease-out;
   pointer-events: auto;
 }
 
 .notification.removing {
-  animation: slideOutDown 0.3s ease-in;
+  animation: slideOutRight 0.3s ease-in;
 }
 
 /* Tipos de notificación */
@@ -152,24 +152,24 @@
 }
 
 /* Animaciones */
-@keyframes slideInUp {
+@keyframes slideInRight {
   from {
-    transform: translateY(100%);
+    transform: translateX(100%);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateX(0);
     opacity: 1;
   }
 }
 
-@keyframes slideOutDown {
+@keyframes slideOutRight {
   from {
-    transform: translateY(0);
+    transform: translateX(0);
     opacity: 1;
   }
   to {
-    transform: translateY(100%);
+    transform: translateX(100%);
     opacity: 0;
   }
 }
@@ -186,7 +186,7 @@
 /* Responsive */
 @media (max-width: 768px) {
   .notification-container {
-    bottom: 10px;
+    top: 10px;
     right: 10px;
     left: 10px;
     max-width: none;
