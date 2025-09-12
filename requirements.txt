@@ -8,3 +8,4 @@ pydantic
 websockets
 python-multipart
 python-jose[cryptography]
+python-magic

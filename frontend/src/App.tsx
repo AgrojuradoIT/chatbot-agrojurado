@@ -5,6 +5,7 @@ import InputArea from './components/InputArea';
 import ChatPanel from './components/ChatPanel';
 import TemplatePanel from './components/TemplatePanel';
 import ContactManager from './components/ContactManager';
+import OperatorManager from './components/OperatorManager';
 import StatisticsDashboard from './components/StatisticsDashboard';
 import ReceiptsPanel from './components/ReceiptsPanel';
 import LoginPage from './components/LoginPage';
@@ -47,7 +48,7 @@ function Dashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'templates' | 'contacts' | 'statistics' | 'comprobantes'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'templates' | 'contacts' | 'operators' | 'statistics' | 'comprobantes'>('chat');
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -447,6 +448,14 @@ function Dashboard() {
                 CONTACTOS
               </button>
             </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.operators.view', 'chatbot.operators.manage']} hideWhenNoAccess={true}>
+              <button 
+                className={`tab-btn ${activeTab === 'operators' ? 'active' : ''}`}
+                onClick={() => setActiveTab('operators')}
+              >
+                OPERARIOS
+              </button>
+            </ProtectedComponent>
             <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
               <button 
                 className={`tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
@@ -553,6 +562,17 @@ function Dashboard() {
                   CONTACTOS
                 </button>
               </ProtectedComponent>
+              <ProtectedComponent permissions={['chatbot.operators.view', 'chatbot.operators.manage']} hideWhenNoAccess={true}>
+                <button 
+                  className={`mobile-tab-btn ${activeTab === 'operators' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('operators');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  OPERARIOS
+                </button>
+              </ProtectedComponent>
               <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
                 <button 
                   className={`mobile-tab-btn ${activeTab === 'statistics' ? 'active' : ''}`}
@@ -602,8 +622,8 @@ function Dashboard() {
           </div>
         </div>
         <div className="App-content">
-          {/* Panel de chats siempre visible excepto en estadísticas y comprobantes */}
-          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
+          {/* Panel de chats siempre visible excepto en estadísticas, operarios y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'operators' && activeTab !== 'comprobantes' && (
             <ChatPanel
               selectedChat={selectedChat}
               onSelectChat={handleSelectChat}
@@ -613,8 +633,8 @@ function Dashboard() {
             />
           )}
           
-          {/* Chat y área de entrada siempre visible excepto en estadísticas y comprobantes */}
-          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
+          {/* Chat y área de entrada siempre visible excepto en estadísticas, operarios y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'operators' && activeTab !== 'comprobantes' && (
             <div className="chat-section">
               {selectedChat ? (
                 <>
@@ -661,6 +681,14 @@ function Dashboard() {
               <ContactManager
                 onContactUpdate={handleContactUpdate}
                 onSelectChat={handleSelectContactFromManager}
+              />
+            </ProtectedComponent>
+          )}
+          
+          {activeTab === 'operators' && (
+            <ProtectedComponent permissions={['chatbot.operators.view', 'chatbot.operators.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los operarios</div>}>
+              <OperatorManager
+                onOperatorUpdate={handleContactUpdate}
               />
             </ProtectedComponent>
           )}

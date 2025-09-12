@@ -1136,7 +1136,13 @@ def create_template_with_local_media(
     # Paso 1: Determinar el tipo MIME del archivo de manera más robusta
     import mimetypes
     import os
-    import magic  # pip install python-magic
+    
+    # Intentar importar magic, pero no es obligatorio
+    try:
+        import magic
+        MAGIC_AVAILABLE = True
+    except ImportError:
+        MAGIC_AVAILABLE = False
     
     # Obtener la extensión del archivo
     file_extension = os.path.splitext(file_path)[1].lower()
@@ -1163,10 +1169,10 @@ def create_template_with_local_media(
         mime_type, _ = mimetypes.guess_type(file_path)
     
     # Si aún no se detectó, intentar con magic (si está disponible)
-    if not mime_type:
+    if not mime_type and MAGIC_AVAILABLE:
         try:
             mime_type = magic.from_file(file_path, mime=True)
-        except (ImportError, Exception):
+        except Exception:
             pass
     
     # Si aún no se detectó, usar valores por defecto basados en el tipo de media

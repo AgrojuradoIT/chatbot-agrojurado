@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Importar todos los routers
-from routers import auth, templates, contacts, messages, statistics, websocket, webhook, payments, receipts
+from routers import auth, templates, contacts, messages, statistics, websocket, webhook, payments, receipts, operators
 
 # =============================================================================
 # CONFIGURACIÓN INICIAL
@@ -72,6 +72,7 @@ app.include_router(messages.router)       # /api/messages/*
 app.include_router(statistics.router)     # /api/statistics/*
 app.include_router(payments.router)       # /api/payments/*
 app.include_router(receipts.router)   # /api/receipts/*
+app.include_router(operators.router)      # /api/operators/*
 app.include_router(webhook.router)        # /webhook/*
 
 # Registrar rutas WebSocket

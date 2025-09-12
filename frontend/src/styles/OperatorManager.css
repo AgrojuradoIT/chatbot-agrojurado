@@ -1,0 +1,60 @@
+/* Reutilizar estilos de ContactManager.css */
+/* Los estilos se heredan de ContactManager.css y ContactImport.css */
+
+/* Estilos específicos para operarios si es necesario */
+.operator-manager-panel {
+  /* Hereda de .contact-manager-panel */
+}
+
+.operator-item {
+  /* Hereda de .contact-item */
+}
+
+.operator-avatar {
+  /* Hereda de .contact-avatar */
+}
+
+.operator-info {
+  /* Hereda de .contact-info */
+}
+
+.operator-name {
+  /* Hereda de .contact-name */
+}
+
+.operator-cedula {
+  /* Hereda de .contact-phone pero con estilo específico para cédula */
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  color: #666;
+}
+
+.operator-date {
+  /* Estilo para fecha de expedición */
+  font-size: 0.85em;
+  color: #888;
+  font-style: italic;
+}
+
+/* Estilos para el preview de importación de operarios */
+.operator-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.operator-preview-info .operator-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.operator-preview-info .operator-cedula {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.operator-preview-info .operator-date {
+  font-size: 0.8em;
+  color: #888;
+}
