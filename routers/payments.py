@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from database import get_db
 from models.payment_models import (
-    PaymentUserCreate, PaymentUserResponse, PaymentUserUpdate,
     PaymentReceiptCreate, PaymentReceiptResponse, PaymentReceiptUpdate,
     ReceiptSearchRequest, ReceiptSearchResponse
 )
@@ -15,96 +14,6 @@ from datetime import datetime
 from services.ftp_service import upload_file as ftp_upload, list_files_in_directory as ftp_list, find_files_by_cedula as ftp_find_by_cedula, rename_file as ftp_rename, move_file as ftp_move, delete_file as ftp_delete
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
-
-# =============================================================================
-# ENDPOINTS PARA USUARIOS
-# =============================================================================
-
-@router.post("/users", response_model=PaymentUserResponse)
-async def create_payment_user(
-    user_data: PaymentUserCreate,
-    db: Session = Depends(get_db)
-):
-    """Crea un nuevo usuario de pago"""
-    success, message, user = ReceiptService.create_user(
-        db=db,
-        cedula=user_data.cedula,
-        name=user_data.name,
-        expedition_date_str=user_data.expedition_date.strftime("%d/%m/%Y")
-    )
-    
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
-    
-    return user
-
-@router.get("/users", response_model=List[PaymentUserResponse])
-async def get_payment_users(db: Session = Depends(get_db)):
-    """Obtiene todos los usuarios de pago"""
-    from models.payment_models import PaymentUser
-    users = db.query(PaymentUser).filter(PaymentUser.is_active == True).all()
-    return users
-
-@router.get("/users/{cedula}", response_model=PaymentUserResponse)
-async def get_payment_user(cedula: str, db: Session = Depends(get_db)):
-    """Obtiene un usuario de pago por cédula"""
-    from models.payment_models import PaymentUser
-    user = db.query(PaymentUser).filter(
-        PaymentUser.cedula == cedula,
-        PaymentUser.is_active == True
-    ).first()
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    return user
-
-@router.put("/users/{cedula}", response_model=PaymentUserResponse)
-async def update_payment_user(
-    cedula: str,
-    user_data: PaymentUserUpdate,
-    db: Session = Depends(get_db)
-):
-    """Actualiza un usuario de pago"""
-    from models.payment_models import PaymentUser
-    
-    user = db.query(PaymentUser).filter(
-        PaymentUser.cedula == cedula,
-        PaymentUser.is_active == True
-    ).first()
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    # Actualizar campos proporcionados
-    if user_data.name is not None:
-        user.name = user_data.name
-    if user_data.expedition_date is not None:
-        user.expedition_date = user_data.expedition_date
-    if user_data.is_active is not None:
-        user.is_active = user_data.is_active
-    
-    db.commit()
-    db.refresh(user)
-    return user
-
-@router.delete("/users/{cedula}")
-async def delete_payment_user(cedula: str, db: Session = Depends(get_db)):
-    """Elimina (desactiva) un usuario de pago"""
-    from models.payment_models import PaymentUser
-    
-    user = db.query(PaymentUser).filter(
-        PaymentUser.cedula == cedula,
-        PaymentUser.is_active == True
-    ).first()
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    user.is_active = False
-    db.commit()
-    
-    return {"message": "Usuario eliminado exitosamente"}
 
 # =============================================================================
 # ENDPOINTS PARA COMPROBANTES
