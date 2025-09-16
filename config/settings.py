@@ -50,9 +50,9 @@ class Settings:
     # CORS Configuration
     CORS_ORIGINS: list = [
         "http://localhost:5173",  # Frontend URL desarrollo
-        "http://localhost:8000",  # Backend URL desarrollo
-        "https://chatbotapi.agrojurado.com",  # Tu dominio de producción
+        "http://localhost:8000",  # Backend URL desarrollo # Tu dominio de producción
         "https://www.agrojurado.com",  # Tu dominio con www
+        "https://chatbot.agrojurado.com",  # Tu dominio de producción
     ]
     
     def __init__(self):
