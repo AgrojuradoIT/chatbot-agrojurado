@@ -12,7 +12,7 @@ const getWebSocketUrl = (): string => {
 };
 
 export interface WebSocketMessage {
-  type: 'new_message' | 'template_updated' | 'contact_updated' | 'stats_updated' | 'receipt_deleted' | 'receipt_moved' | 'receipt_uploaded';
+  type: 'new_message' | 'template_updated' | 'contact_updated' | 'operator_updated' | 'stats_updated' | 'receipt_deleted' | 'receipt_moved' | 'receipt_uploaded';
   message?: {
     id: string;
     text: string;
@@ -24,6 +24,7 @@ export interface WebSocketMessage {
   data?: {
     template_id?: string;
     contact_phone?: string;
+    operator_cedula?: string;
     action?: 'created' | 'updated' | 'deleted';
     // Receipt events
     receipt_id?: string;

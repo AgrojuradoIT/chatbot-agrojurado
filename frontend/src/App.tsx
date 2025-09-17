@@ -13,6 +13,7 @@ import AuthCallback from './components/AuthCallback';
 import { messageService } from './services/messageService';
 import { websocketService, type WebSocketMessage } from './services/websocketService';
 import { ContactProvider } from './contexts/ContactContext';
+import { OperatorProvider } from './contexts/OperatorContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider, useNotifications } from './components/NotificationContainer';
 import { ReceiptOperationProvider } from './contexts/ReceiptOperationContext';
@@ -420,7 +421,8 @@ function Dashboard() {
         
         <div className="tab-navigation">
           <div className="app-title">
-            <h1>Chatbot Agrojurado</h1>
+            <img src="/chatbot_icon.svg" alt="Chatbot Agrojurado" style={{ width: 24, height: 24 }} />
+            <span className="app-logo-text">Chatbot</span>
           </div>
           
           <div className="tab-buttons">
@@ -622,8 +624,8 @@ function Dashboard() {
           </div>
         </div>
         <div className="App-content">
-          {/* Panel de chats siempre visible excepto en estadísticas, operarios y comprobantes */}
-          {activeTab !== 'statistics' && activeTab !== 'operators' && activeTab !== 'comprobantes' && (
+          {/* Panel de chats siempre visible excepto en estadísticas y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
             <ChatPanel
               selectedChat={selectedChat}
               onSelectChat={handleSelectChat}
@@ -633,8 +635,8 @@ function Dashboard() {
             />
           )}
           
-          {/* Chat y área de entrada siempre visible excepto en estadísticas, operarios y comprobantes */}
-          {activeTab !== 'statistics' && activeTab !== 'operators' && activeTab !== 'comprobantes' && (
+          {/* Chat y área de entrada siempre visible excepto en estadísticas y comprobantes */}
+          {activeTab !== 'statistics' && activeTab !== 'comprobantes' && (
             <div className="chat-section">
               {selectedChat ? (
                 <>
@@ -744,7 +746,9 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <ReceiptOperationProvider>
-          <AppContent />
+          <OperatorProvider>
+            <AppContent />
+          </OperatorProvider>
         </ReceiptOperationProvider>
       </NotificationProvider>
     </AuthProvider>

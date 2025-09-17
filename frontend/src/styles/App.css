@@ -239,6 +239,9 @@ body {
 
 .app-title {
   padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-title h1 {
@@ -246,6 +249,14 @@ body {
   color: #e9edef;
   font-size: 18px;
   font-weight: 600;
+}
+
+.app-logo-text {
+  color: #00a884;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  user-select: none;
+  font-family: 'Poppins', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 .tab-buttons {

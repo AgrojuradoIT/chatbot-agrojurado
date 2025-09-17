@@ -11,6 +11,7 @@ import { useNotifications } from './NotificationContainer';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmDialog from './ConfirmDialog';
 import { ProtectedComponent } from './ProtectedComponent';
+import { useOperators } from '../contexts/OperatorContext';
 
 interface OperatorManagerProps {
   onOperatorUpdate?: () => void;
@@ -21,9 +22,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
 }) => {
   const { showNotification } = useNotifications();
   const { confirm, confirmDialog } = useConfirm();
-  const [operators, setOperators] = useState<Operator[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { operators, loading, error, refreshOperators } = useOperators();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -36,36 +35,9 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
   
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Cargar operarios al montar el componente
+  // Nota: el contexto ya mantiene cache y escucha WebSocket. Aquí solo filtramos por búsqueda local.
   useEffect(() => {
-    loadOperators();
-  }, []);
-
-  const loadOperators = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await operatorService.getOperators(1, 100, searchTerm);
-      setOperators(response.operators);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar operarios');
-      showNotification({
-        type: 'error',
-        title: 'Error',
-        message: err.message || 'Error al cargar operarios'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Recargar operarios cuando cambie el término de búsqueda
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadOperators();
-    }, 300);
-    
-    return () => clearTimeout(timeoutId);
+    // Si se requiere búsqueda en backend, podríamos llamar refreshOperators con search, pero por ahora es filtro local.
   }, [searchTerm]);
 
   // Filtrar operarios basado en el término de búsqueda
@@ -108,7 +80,9 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       
       setNewOperator({ cedula: '', name: '', expedition_date: '' });
       setShowCreateModal(false);
-      loadOperators();
+      // El WebSocket operator_updated refrescará el contexto automáticamente
+      // Como respaldo opcional, podemos forzar refresh
+      refreshOperators().catch(() => {});
       onOperatorUpdate?.();
       
       showNotification({
@@ -137,7 +111,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       
       setShowEditModal(false);
       setEditingOperator(null);
-      loadOperators();
+      refreshOperators().catch(() => {});
       onOperatorUpdate?.();
       
       showNotification({
@@ -169,7 +143,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
 
     try {
       await operatorService.deleteOperator(cedula);
-      loadOperators();
+      refreshOperators().catch(() => {});
       onOperatorUpdate?.();
       
       showNotification({
@@ -397,7 +371,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       {showImportModal && (
         <OperatorImport
           onImportComplete={() => {
-            loadOperators();
+            refreshOperators().catch(() => {});
             onOperatorUpdate?.();
           }}
           onClose={() => setShowImportModal(false)}

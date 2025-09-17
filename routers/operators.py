@@ -243,7 +243,7 @@ async def delete_operator(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permission("chatbot.operators.manage"))
 ):
-    """Elimina (desactiva) un operario"""
+    """Elimina un operario de la base de datos."""
     try:
         operator = db.query(PaymentUser).filter(
             PaymentUser.cedula == cedula
@@ -252,16 +252,17 @@ async def delete_operator(
         if not operator:
             raise HTTPException(status_code=404, detail="Operario no encontrado")
         
-        # Guardar datos del operario antes de desactivarlo
+        # Guardar datos del operario antes de eliminarlo para notificar
         operator_data = {
             "id": operator.id,
             "cedula": operator.cedula,
             "name": operator.name,
-            "expedition_date": operator.expedition_date.isoformat(),
+            "expedition_date": operator.expedition_date.isoformat() if operator.expedition_date else None,
             "is_active": operator.is_active
         }
         
-        operator.is_active = False
+        # Eliminación definitiva
+        db.delete(operator)
         db.commit()
         
         # Notificar eliminación de operario por WebSocket
