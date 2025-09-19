@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { contactService } from '../services/contactService';
-import type { Contact, ContactCreateRequest } from '../services/contactService';
+import type { Contact, ContactCreateRequest, ContactTypeEnum } from '../services/contactService';
 import ContactImport from './ContactImport';
 import SearchInput from './SearchInput';
 import '../styles/ContactImport.css';
@@ -32,6 +32,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
   const [newContact, setNewContact] = useState<ContactCreateRequest>({
     phone_number: '',
     name: '',
+    contact_type: undefined,
     is_active: true
   });
   
@@ -102,7 +103,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
         ...newContact,
         is_active: true // Por defecto, los contactos creados están activos
       });
-      setNewContact({ phone_number: '', name: '', is_active: true });
+      setNewContact({ phone_number: '', name: '', contact_type: undefined, is_active: true });
       setPhoneInputValue('+57'); // Resetear el input visual
       setShowCreateModal(false);
       // No recargar aquí, el contexto se encargará de actualizar
@@ -128,6 +129,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
     try {
       await contactService.updateContact(editingContact.phone_number, {
         name: editingContact.name,
+        contact_type: editingContact.contact_type as ContactTypeEnum | undefined,
         is_active: editingContact.is_active
       });
       setShowEditModal(false);
@@ -259,6 +261,11 @@ const ContactManager: React.FC<ContactManagerProps> = ({
             <div className="contact-info">
               <div className="contact-name">{contact.name}</div>
               <div className="contact-phone">{formatPhoneNumber(contact.phone_number)}</div>
+              {contact.contact_type && (
+                <div className="contact-type">
+                  <span className="contact-badge" data-type={contact.contact_type}>{contact.contact_type}</span>
+                </div>
+              )}
               <div className="contact-last-message">
                 {contact.is_active ? (
                   <>
@@ -331,6 +338,20 @@ const ContactManager: React.FC<ContactManagerProps> = ({
                 />
               </div>
             </div>
+            <div className="form-group">
+              <label>Tipo de Contacto:</label>
+              <select
+                value={newContact.contact_type || ""}
+                onChange={(e) => setNewContact({ ...newContact, contact_type: e.target.value as ContactTypeEnum || undefined })}
+              >
+                <option value="">Seleccionar tipo</option>
+                <option value="Administrativo">Administrativo</option>
+                <option value="Operario">Operario</option>
+                <option value="Proveedor">Proveedor</option>
+                <option value="Cliente">Cliente</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
             <div className="modal-actions">
               <button onClick={handleCreateContact}>Crear</button>
               <button onClick={() => setShowCreateModal(false)}>Cancelar</button>
@@ -361,6 +382,20 @@ const ContactManager: React.FC<ContactManagerProps> = ({
                 onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })}
                 placeholder="Nombre del contacto"
               />
+            </div>
+            <div className="form-group">
+              <label>Tipo de Contacto:</label>
+              <select
+                value={editingContact.contact_type || ""}
+                onChange={(e) => setEditingContact({ ...editingContact, contact_type: e.target.value as ContactTypeEnum || undefined })}
+              >
+                <option value="">Seleccionar tipo</option>
+                <option value="Administrativo">Administrativo</option>
+                <option value="Operario">Operario</option>
+                <option value="Proveedor">Proveedor</option>
+                <option value="Cliente">Cliente</option>
+                <option value="Otro">Otro</option>
+              </select>
             </div>
             <div className="form-group">
               <label className="checkbox-label">

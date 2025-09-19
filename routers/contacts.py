@@ -45,6 +45,7 @@ async def get_contacts(
             contact_responses.append(ContactResponse(
                 phone_number=contact.phone_number,
                 name=contact.name,
+                contact_type=contact.contact_type,
                 last_interaction=contact.last_interaction.isoformat() if contact.last_interaction else None,
                 is_active=contact.is_active
             ))
@@ -96,6 +97,7 @@ async def create_contacts_bulk(
                 new_contact = WhatsappUser(
                     phone_number=contact.phone_number,
                     name=contact.name,
+                    contact_type=contact.contact_type if hasattr(contact, 'contact_type') else None,
                     is_active=contact.is_active if hasattr(contact, 'is_active') else True
                 )
                 
@@ -149,6 +151,7 @@ async def create_contact(
         new_contact = WhatsappUser(
             phone_number=contact.phone_number,
             name=contact.name,
+            contact_type=contact.contact_type,
             is_active=contact.is_active
         )
         
@@ -205,6 +208,8 @@ async def update_contact(
         # Actualizar campos si se proporcionan
         if contact_update.name is not None:
             contact.name = contact_update.name
+        if contact_update.contact_type is not None:
+            contact.contact_type = contact_update.contact_type
         if contact_update.is_active is not None:
             contact.is_active = contact_update.is_active
         
@@ -303,6 +308,7 @@ async def get_contact(
         return ContactResponse(
             phone_number=contact.phone_number,
             name=contact.name,
+            contact_type=contact.contact_type,
             last_interaction=contact.last_interaction.isoformat() if contact.last_interaction else None,
             is_active=contact.is_active
         )

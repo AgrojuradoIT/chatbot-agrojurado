@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/TemplatePanel.css';
 import '../styles/SearchInput.css';
+import '../styles/ContactManager.css';
 import { templateService } from '../services/templateService';
 import type { TemplateWithMediaRequest } from '../services/templateService';
 import { useContacts } from '../contexts/ContactContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getAuthHeaders } from '../utils/auth';
+import { VALID_CONTACT_TYPES } from '../services/contactService';
 import MediaSelector from './MediaSelector';
 import LoadingButton from './LoadingButton';
 import SearchInput from './SearchInput';
@@ -155,6 +157,88 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   };
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  // Estado para almacenar los tipos de contacto seleccionados
+  const [selectedContactTypes, setSelectedContactTypes] = useState<string[]>([]);
+  const [filteredContacts, setFilteredContacts] = useState<typeof contacts>([]);
+  const [allContactsSelected, setAllContactsSelected] = useState<boolean>(false);
+  const [contactSearchTerm, setContactSearchTerm] = useState('');
+  const [showContactSearch, setShowContactSearch] = useState(false);
+
+  const handleSearchToggle = () => {
+    setShowContactSearch(!showContactSearch);
+    if (showContactSearch) {
+      setContactSearchTerm('');
+    }
+  };
+
+  // Efecto para filtrar contactos cuando cambian los tipos seleccionados o la búsqueda
+  useEffect(() => {
+    // Comenzar con todos los contactos activos
+    let filtered = contacts.filter(contact => contact.is_active);
+
+    // Aplicar filtro por tipo si hay tipos seleccionados
+    if (selectedContactTypes.length > 0) {
+      filtered = filtered.filter((contact) => 
+        contact.contact_type && selectedContactTypes.includes(contact.contact_type)
+      );
+    }
+
+    // Aplicar filtro de búsqueda si hay término de búsqueda
+    if (contactSearchTerm.trim()) {
+      const searchLower = contactSearchTerm.toLowerCase().trim();
+      filtered = filtered.filter((contact) =>
+        contact.name.toLowerCase().includes(searchLower) ||
+        contact.phone_number.includes(searchLower) ||
+        (contact.contact_type && contact.contact_type.toLowerCase().includes(searchLower))
+      );
+    }
+
+    setFilteredContacts(filtered);
+  }, [contacts, selectedContactTypes, contactSearchTerm]);
+
+  // Toggle para la selección de tipos de contacto
+  const handleToggleContactType = (type: string) => {
+    // Al seleccionar cualquier filtro específico, asegurarse de que "Todos" no esté seleccionado
+    setAllContactsSelected(false);
+    
+    // Actualizar tipos seleccionados
+    setSelectedContactTypes(prev => {
+      const isAlreadySelected = prev.includes(type);
+      const newTypes = isAlreadySelected
+        ? prev.filter(t => t !== type)
+        : [...prev, type];
+      
+      // Si estamos añadiendo un nuevo tipo, seleccionar también sus contactos
+      if (!isAlreadySelected) {
+        // Encontrar los contactos de este tipo que están activos
+        const contactsOfThisType = contacts
+          .filter(contact => contact.is_active && contact.contact_type === type)
+          .map(contact => contact.phone_number);
+        
+        // Añadirlos a la selección actual (sin duplicados)
+        setSelectedContacts(prevSelected => {
+          const uniqueContacts = [...new Set([...prevSelected, ...contactsOfThisType])];
+          return uniqueContacts;
+        });
+      } else if (newTypes.length === 0) {
+        // Si quitamos el último filtro, deseleccionamos todos los contactos
+        setSelectedContacts([]);
+      } else {
+        // Si quitamos un tipo pero quedan otros, actualizar selección con los tipos restantes
+        const contactsOfRemainingTypes = contacts
+          .filter(contact => 
+            contact.is_active && 
+            contact.contact_type && 
+            newTypes.includes(contact.contact_type)
+          )
+          .map(contact => contact.phone_number);
+        
+        setSelectedContacts(contactsOfRemainingTypes);
+      }
+      
+      return newTypes;
+    });
+  };
 
   const handleToggleContactSelection = (contactId: string) => {
     setSelectedContacts((prev) =>
@@ -165,7 +249,13 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   };
 
   const handleSelectAllContacts = () => {
-    // Solo seleccionar contactos activos
+    // Marcar el botón "Todos" como seleccionado
+    setAllContactsSelected(true);
+    
+    // Limpiar filtros de tipo al seleccionar todos
+    setSelectedContactTypes([]);
+    
+    // Seleccionar todos los contactos activos (sin filtros)
     const activeContactIds = contacts
       .filter(contact => contact.is_active)
       .map(contact => contact.phone_number);
@@ -173,8 +263,17 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   };
 
   const handleDeselectAllContacts = () => {
+    // Desmarcar el botón "Todos"
+    setAllContactsSelected(false);
+    
+    // Limpiar filtros de tipo al deseleccionar todos
+    setSelectedContactTypes([]);
+    
+    // Deseleccionar todos los contactos
     setSelectedContacts([]);
   };
+  
+  // Esta sección se ha simplificado y las funciones innecesarias se han eliminado
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showContactsModal, setShowContactsModal] = useState(false);
@@ -1023,28 +1122,84 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
             </div>
             
             <div className="contacts-modal-actions">
-              <button 
-                className="select-all-btn"
-                onClick={handleSelectAllContacts}
-              >
-                Todos
-              </button>
-              <button 
-                className="deselect-all-btn"
-                onClick={handleDeselectAllContacts}
-              >
-                Ninguno
-              </button>
+              <div className="contacts-top-actions">
+                <div className="contacts-selection-buttons">
+                  <button 
+                    className={`contact-type-btn ${allContactsSelected ? 'selected' : ''}`}
+                    onClick={handleSelectAllContacts}
+                  >
+                    Todos
+                    {allContactsSelected && (
+                      <span className="check-icon">✓</span>
+                    )}
+                  </button>
+                  <button 
+                    className="contact-type-btn"
+                    onClick={handleDeselectAllContacts}
+                  >
+                    Ninguno
+                  </button>
+                </div>
+                <div className="chat-search-container">
+                  {!showContactSearch ? (
+                    <button
+                      className="search-toggle-btn"
+                      onClick={handleSearchToggle}
+                      title="Buscar contactos"
+                    >
+                      <span className="material-icons">search</span>
+                    </button>
+                  ) : (
+                    <div className="search-expanded">
+                      <SearchInput
+                        value={contactSearchTerm}
+                        onChange={setContactSearchTerm}
+                        placeholder="Buscar contactos..."
+                        className="chat-search"
+                        showResultsInfo={false}
+                        showClearButton={false}
+                      />
+                      <button
+                        className="search-close-btn"
+                        onClick={handleSearchToggle}
+                        title="Cerrar búsqueda"
+                      >
+                        <span className="material-icons">close</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <h5>Seleccionar por tipo:</h5>
+              {VALID_CONTACT_TYPES.map(type => (
+                <button 
+                  key={type}
+                  className={`contact-type-btn ${selectedContactTypes.includes(type) ? 'selected' : ''}`}
+                  onClick={() => handleToggleContactType(type)}
+                  data-type={type}
+                >
+                  {type}
+                  {selectedContactTypes.includes(type) && (
+                    <span className="check-icon">✓</span>
+                  )}
+                </button>
+              ))}
+              {/* Eliminado el botón "Mostrar todos" redundante */}
             </div>
             
-                        <div className="contacts-modal-list">
+            <div className="contacts-modal-list">
               {contacts.length === 0 ? (
                 <div className="no-active-contacts">
                   <p>No hay contactos activos disponibles</p>
                   <p>Solo se muestran contactos que han interactuado recientemente</p>
                 </div>
+              ) : selectedContactTypes.length > 0 && filteredContacts.length === 0 ? (
+                <div className="no-active-contacts">
+                  <p>No hay contactos para los tipos seleccionados</p>
+                </div>
               ) : (
-                contacts.map((contact) => (
+                filteredContacts.map((contact) => (
                   <div 
                     key={contact.phone_number}
                     className={`contact-modal-item ${
@@ -1058,6 +1213,9 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                     <div className="contact-info">
                       <div className="contact-name">{contact.name}</div>
                       <div className="contact-phone">{formatPhoneNumber(contact.phone_number)}</div>
+                      {contact.contact_type && (
+                        <span className="contact-badge" data-type={contact.contact_type}>{contact.contact_type}</span>
+                      )}
                       <div className="contact-status">
                         {contact.is_active ? (
                           <>

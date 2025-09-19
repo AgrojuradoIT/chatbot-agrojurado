@@ -206,6 +206,49 @@
   box-shadow: 0 4px 12px rgba(134, 150, 160, 0.3);
 }
 
+/* Contacto tipo badge */
+.contact-type {
+  margin-bottom: 4px;
+}
+
+.contact-badge {
+  background-color: #2a3942;
+  color: #e9edef;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  margin-right: 5px;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Colores diferentes según el tipo de contacto */
+.contact-badge[data-type="Administrativo"] {
+  background-color: #0284c7;
+  border: 1px solid #026397;
+}
+
+.contact-badge[data-type="Operario"] {
+  background-color: #2563eb;
+  border: 1px solid #1d4ed8;
+}
+
+.contact-badge[data-type="Proveedor"] {
+  background-color: #9333ea;
+  border: 1px solid #7e22ce;
+}
+
+.contact-badge[data-type="Cliente"] {
+  background-color: #65a30d;
+  border: 1px solid #4d7c0f;
+}
+
+.contact-badge[data-type="Otro"] {
+  background-color: #f97316;
+  border: 1px solid #ea580c;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .modal {

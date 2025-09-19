@@ -128,6 +128,7 @@ def create_whatsapp_users_table(engine):
         CREATE TABLE whatsapp_users (
             phone_number VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100),
+            contact_type VARCHAR(50) CHECK (contact_type IN ('Administrativo', 'Operario', 'Proveedor', 'Cliente', 'Otro') OR contact_type IS NULL),
             last_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
             inactivity_warning_sent BOOLEAN DEFAULT FALSE,
@@ -149,6 +150,7 @@ def create_whatsapp_users_table(engine):
         required_columns = {
             'phone_number': 'VARCHAR(50)',
             'name': 'VARCHAR(100)',
+            'contact_type': "VARCHAR(50) CHECK (contact_type IN ('Administrativo', 'Operario', 'Proveedor', 'Cliente', 'Otro') OR contact_type IS NULL)",
             'last_interaction': 'TIMESTAMP',
             'is_active': 'BOOLEAN',
             'inactivity_warning_sent': 'BOOLEAN',

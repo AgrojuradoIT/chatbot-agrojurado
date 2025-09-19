@@ -1,7 +1,19 @@
 from pydantic import BaseModel
 from sqlalchemy import Column, String, DateTime, Boolean, func
 from database import Base
+import enum
 from typing import List, Optional, Any, Dict
+
+class ContactType(str, enum.Enum):
+    """Tipos de contacto disponibles"""
+    ADMINISTRATIVO = "Administrativo"
+    OPERARIO = "Operario" 
+    PROVEEDOR = "Proveedor"
+    CLIENTE = "Cliente"
+    OTRO = "Otro"
+
+# Lista de valores válidos para contact_type
+VALID_CONTACT_TYPES = ["Administrativo", "Operario", "Proveedor", "Cliente", "Otro"]
 
 class ChangeValue(BaseModel):
     messaging_product: str
@@ -28,6 +40,11 @@ class WhatsappUser(Base):
 
     phone_number = Column(String(50), primary_key=True, index=True)
     name = Column(String(100), nullable=True)
+    contact_type = Column(
+        String(50),
+        nullable=True,
+        comment="Tipo de contacto: Administrativo, Operario, Proveedor, Cliente, Otro"
+    )
     last_interaction = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
     inactivity_warning_sent = Column(Boolean, default=False)

@@ -114,6 +114,7 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
   const processRow = (row: any, rowIndex: number): ContactCreateRequest => {
     const phone = row['Número de Teléfono'] || row['Telefono'] || row['Phone'] || row['Número'] || '';
     const name = row['Nombre'] || row['Name'] || row['Contacto'] || '';
+    const contactType = row['Tipo de Contacto'] || row['Contact Type'] || '';
     
     if (!phone || !name) {
       throw new Error(`Fila ${rowIndex + 1}: Número de teléfono y nombre son obligatorios`);
@@ -123,11 +124,17 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
       throw new Error(`Fila ${rowIndex + 1}: El nombre debe tener al menos 2 caracteres`);
     }
     
+    // Validar tipo de contacto si se proporciona
+    if (contactType && !['Administrativo', 'Operario', 'Proveedor', 'Cliente', 'Otro'].includes(contactType.trim())) {
+      throw new Error(`Fila ${rowIndex + 1}: Tipo de contacto inválido. Debe ser: Administrativo, Operario, Proveedor, Cliente, Otro`);
+    }
+    
     const formattedPhone = formatPhoneNumber(phone);
     
     return {
       phone_number: formattedPhone,
       name: name.trim(),
+      contact_type: contactType ? contactType.trim() as any : undefined,
       is_active: true
     };
   };
@@ -137,15 +144,28 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
     const template = [
       {
         'Nombre': 'Juan Pérez',
-        'Número de Teléfono': '3016475874'
+        'Número de Teléfono': '3016475874',
+        'Tipo de Contacto': 'Administrativo'
       },
       {
         'Nombre': 'María García',
-        'Número de Teléfono': '573001234568'
+        'Número de Teléfono': '573001234568',
+        'Tipo de Contacto': 'Operario'
       },
       {
         'Nombre': 'Carlos López',
-        'Número de Teléfono': '0301234567'
+        'Número de Teléfono': '0301234567',
+        'Tipo de Contacto': 'Proveedor'
+      },
+      {
+        'Nombre': 'Laura Gómez',
+        'Número de Teléfono': '3105556677',
+        'Tipo de Contacto': 'Cliente'
+      },
+      {
+        'Nombre': 'Pedro Ramírez',
+        'Número de Teléfono': '3209998877',
+        'Tipo de Contacto': 'Otro'
       }
     ];
 
@@ -156,7 +176,8 @@ const ContactImport: React.FC<ContactImportProps> = ({ onImportComplete, onClose
     // Ajustar ancho de columnas
     ws['!cols'] = [
       { width: 20 }, // Nombre
-      { width: 15 }  // Número de Teléfono
+      { width: 15 }, // Número de Teléfono
+      { width: 15 }  // Tipo de Contacto
     ];
     
     XLSX.writeFile(wb, 'plantilla_contactos.xlsx');

@@ -1,8 +1,13 @@
 import { getAuthHeaders } from '../utils/auth';
 
+// Definir las opciones de tipo de contacto para referencia
+export const VALID_CONTACT_TYPES = ['Administrativo', 'Operario', 'Proveedor', 'Cliente', 'Otro'] as const;
+export type ContactTypeEnum = typeof VALID_CONTACT_TYPES[number];
+
 export interface Contact {
   phone_number: string;
   name: string;
+  contact_type?: string | null;
   last_interaction: string | null;
   is_active: boolean;
 }
@@ -10,11 +15,13 @@ export interface Contact {
 export interface ContactCreateRequest {
   phone_number: string;
   name: string;
+  contact_type?: string;
   is_active: boolean;
 }
 
 export interface ContactUpdateRequest {
   name: string;
+  contact_type?: string;
   is_active: boolean;
 }
 
