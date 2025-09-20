@@ -455,7 +455,7 @@ function Dashboard() {
                 className={`tab-btn ${activeTab === 'operators' ? 'active' : ''}`}
                 onClick={() => setActiveTab('operators')}
               >
-                OPERARIOS
+                EMPLEADOS
               </button>
             </ProtectedComponent>
             <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
@@ -572,7 +572,7 @@ function Dashboard() {
                     setIsMobileMenuOpen(false);
                   }}
                 >
-                  OPERARIOS
+                  EMPLEADOS
                 </button>
               </ProtectedComponent>
               <ProtectedComponent permissions={['chatbot.statistics.view', 'chatbot.statistics.manage']} hideWhenNoAccess={true}>
@@ -688,7 +688,7 @@ function Dashboard() {
           )}
           
           {activeTab === 'operators' && (
-            <ProtectedComponent permissions={['chatbot.operators.view', 'chatbot.operators.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los operarios</div>}>
+            <ProtectedComponent permissions={['chatbot.operators.view', 'chatbot.operators.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los empleados</div>}>
               <OperatorManager
                 onOperatorUpdate={handleContactUpdate}
               />

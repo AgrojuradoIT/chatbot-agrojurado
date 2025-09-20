@@ -53,7 +53,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
   // Función para validar y procesar una fila de datos
   const processRow = (row: any, rowIndex: number): OperatorCreateRequest => {
     const cedula = row['Cédula'] || row['Cedula'] || row['Cedula de Identidad'] || row['Documento'] || '';
-    const name = row['Nombre'] || row['Name'] || row['Operario'] || row['Nombre Completo'] || '';
+  const name = row['Nombre'] || row['Name'] || row['Empleado'] || row['Nombre Completo'] || '';
     const expeditionDate = row['Fecha de Expedición'] || row['Fecha Expedicion'] || row['Expedición'] || '';
     
     if (!cedula || !name || !expeditionDate) {
@@ -123,7 +123,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
 
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Operarios');
+    XLSX.utils.book_append_sheet(wb, ws, 'Empleados');
     
     // Ajustar ancho de columnas
     ws['!cols'] = [
@@ -132,7 +132,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
       { width: 20 }  // Fecha de Expedición
     ];
     
-    XLSX.writeFile(wb, 'plantilla_operarios.xlsx');
+    XLSX.writeFile(wb, 'plantilla_empleados.xlsx');
   };
 
   // Función para procesar el archivo Excel y mostrar preview
@@ -196,7 +196,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
         .map(p => p.operator);
       
       if (validOperators.length === 0) {
-        throw new Error('No hay operarios válidos para importar');
+  throw new Error('No hay empleados válidos para importar');
       }
       
       const result = await operatorService.createOperatorsBulk(validOperators);
@@ -217,7 +217,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
     } catch (error: any) {
       setImportResult({
         success: 0,
-        errors: [`Error al importar operarios: ${error.message}`],
+  errors: [`Error al importar empleados: ${error.message}`],
         duplicates: [],
         total: operatorPreview.length
       });
@@ -283,7 +283,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
     <div className="modal-overlay">
       <div className="modal import-modal">
         <div className="modal-header">
-          <h4>Importar Operarios</h4>
+          <h4>Importar Empleados</h4>
           <button className="close-btn" onClick={handleClose}>×</button>
         </div>
         
@@ -357,7 +357,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
                   <span className="material-icons">preview</span>
                   Vista previa
                 </h5>
-                <p>Revisa los operarios antes de importar</p>
+                <p>Revisa los empleados antes de importar</p>
               </div>
               
               <div className="preview-list">
@@ -400,7 +400,7 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
                   disabled={operatorPreview.filter(p => p.status === 'valid').length === 0}
                 >
                   <span className="material-icons">cloud_upload</span>
-                  Importar Operarios
+                  Importar Empleados
                 </button>
                 <button 
                   className="cancel-btn"

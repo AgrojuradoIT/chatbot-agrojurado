@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 
 export interface ConfirmOptions {
   title: string;
-  message: string;
+  message: ReactNode;
   confirmText?: string;
   cancelText?: string;
   type?: 'logout' | 'delete' | 'warning' | 'info';

@@ -40,8 +40,8 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
     // Si se requiere búsqueda en backend, podríamos llamar refreshOperators con search, pero por ahora es filtro local.
   }, [searchTerm]);
 
-  // Filtrar operarios basado en el término de búsqueda
-  const filteredOperators = operators.filter(operator => {
+  // Filtrar empleados basado en el término de búsqueda
+  const filteredEmployees = operators.filter(operator => {
     if (!searchTerm.trim()) return true;
     
     const searchLower = searchTerm.toLowerCase().trim();
@@ -87,14 +87,14 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       
       showNotification({
         type: 'success',
-        title: 'Operario Creado',
-        message: `El operario "${newOperator.name}" se ha creado exitosamente.`
+        title: 'Empleado Creado',
+        message: `El empleado "${newOperator.name}" se ha creado exitosamente.`
       });
     } catch (err: any) {
       showNotification({
         type: 'error',
-        title: 'Error al Crear Operario',
-        message: err.message || 'Error al crear el operario'
+        title: 'Error al Crear Empleado',
+        message: err.message || 'Error al crear el empleado'
       });
     }
   };
@@ -116,22 +116,22 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       
       showNotification({
         type: 'success',
-        title: 'Operario Actualizado',
-        message: `El operario "${editingOperator.name}" se ha actualizado exitosamente.`
+        title: 'Empleado Actualizado',
+        message: `El empleado "${editingOperator.name}" se ha actualizado exitosamente.`
       });
     } catch (err: any) {
       showNotification({
         type: 'error',
-        title: 'Error al Actualizar Operario',
-        message: err.message || 'Error al actualizar el operario'
+        title: 'Error al Actualizar Empleado',
+        message: err.message || 'Error al actualizar el empleado'
       });
     }
   };
 
   const handleDeleteOperator = async (cedula: string) => {
     const confirmed = await confirm({
-      title: 'Eliminar Operario',
-      message: '¿Estás seguro de que quieres eliminar este operario? Esta acción no se puede deshacer.',
+      title: 'Eliminar Empleado',
+      message: '¿Estás seguro de que quieres eliminar este empleado? Esta acción no se puede deshacer.',
       confirmText: 'Eliminar',
       cancelText: 'Cancelar',
       type: 'delete'
@@ -148,14 +148,14 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       
       showNotification({
         type: 'success',
-        title: 'Operario Eliminado',
-        message: 'El operario se ha eliminado exitosamente.'
+        title: 'Empleado Eliminado',
+        message: 'El empleado se ha eliminado exitosamente.'
       });
     } catch (err: any) {
       showNotification({
         type: 'error',
-        title: 'Error al Eliminar Operario',
-        message: err.message || 'Error al eliminar el operario'
+        title: 'Error al Eliminar Empleado',
+        message: err.message || 'Error al eliminar el empleado'
       });
     }
   };
@@ -181,13 +181,13 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
   return (
     <div className="contact-manager-panel">
       <div className="contacts-header">
-        <h3>Operarios</h3>
+        <h3>Empleados</h3>
         <div className="contacts-actions">
           <ProtectedComponent permissions={['chatbot.operators.manage']}>
             <button 
               className="import-contact-btn"
               onClick={() => setShowImportModal(true)}
-              title="Importar operarios desde Excel"
+              title="Importar empleados desde Excel"
             >
               <span className="material-icons">upload_file</span>
               Importar
@@ -209,17 +209,17 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       <SearchInput
         value={searchTerm}
         onChange={setSearchTerm}
-        placeholder="Buscar operarios por nombre o cédula..."
-        resultsCount={filteredOperators.length}
+        placeholder="Buscar empleados por nombre o cédula..."
+        resultsCount={filteredEmployees.length}
         totalCount={operators.length}
         className="contact-search"
       />
 
-      {loading && <div className="loading">Cargando operarios...</div>}
+      {loading && <div className="loading">Cargando empleados...</div>}
       {error && <div className="template-error">{error}</div>}
 
       <div className="contacts-list">
-        {!loading && !error && filteredOperators.map((operator) => (
+        {!loading && !error && filteredEmployees.map((operator) => (
           <div 
             key={operator.cedula} 
             className="contact-item"
@@ -267,19 +267,19 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
           </div>
         ))}
         
-        {!loading && !error && filteredOperators.length === 0 && (
+        {!loading && !error && filteredEmployees.length === 0 && (
           <div className="no-contacts">
-            <p>No hay operarios registrados</p>
-            <p>Crea tu primer operario para comenzar</p>
+            <p>No hay empleados registrados</p>
+            <p>Crea tu primer empleado para comenzar</p>
           </div>
         )}
       </div>
 
-      {/* Modal para crear operario */}
+      {/* Modal para crear empleado */}
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h4>Agregar Nuevo Operario</h4>
+            <h4>Agregar Nuevo Empleado</h4>
             <div className="form-group">
               <label>Cédula:</label>
               <input
@@ -296,7 +296,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
                 type="text"
                 value={newOperator.name}
                 onChange={(e) => setNewOperator({ ...newOperator, name: e.target.value })}
-                placeholder="Nombre completo del operario"
+                placeholder="Nombre completo del empleado"
               />
             </div>
             <div className="form-group">
@@ -315,11 +315,11 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
         </div>
       )}
 
-      {/* Modal para editar operario */}
+      {/* Modal para editar empleado */}
       {showEditModal && editingOperator && (
         <div className="modal-overlay">
           <div className="modal">
-            <h4>Editar Operario</h4>
+            <h4>Editar Empleado</h4>
             <div className="form-group">
               <label>Cédula:</label>
               <input
@@ -335,7 +335,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
                 type="text"
                 value={editingOperator.name}
                 onChange={(e) => setEditingOperator({ ...editingOperator, name: e.target.value })}
-                placeholder="Nombre completo del operario"
+                placeholder="Nombre completo del empleado"
               />
             </div>
             <div className="form-group">
@@ -356,7 +356,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
                   checked={editingOperator.is_active}
                   onChange={(e) => setEditingOperator({ ...editingOperator, is_active: e.target.checked })}
                 />
-                Operario activo
+                Empleado activo
               </label>
             </div>
             <div className="modal-actions">
@@ -367,7 +367,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
         </div>
       )}
 
-      {/* Modal para importar operarios */}
+      {/* Modal para importar empleados */}
       {showImportModal && (
         <OperatorImport
           onImportComplete={() => {

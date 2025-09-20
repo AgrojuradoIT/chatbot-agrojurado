@@ -573,6 +573,27 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       });
       return;
     }
+    // Confirmar costo por mensaje antes de proceder
+    const costPerMessage = 100;
+    const totalCost = (selectedContacts.length * costPerMessage).toFixed(0);
+    const proceed = await confirm({
+      title: 'Confirmar envío de plantillas',
+      message: (
+        <>
+          Cada plantilla tiene un costo de <span className="cost-highlight">${costPerMessage.toFixed(0)}</span> por mensaje entregado. 
+          Estás a punto de enviar a {selectedContacts.length} contactos. 
+          Costo estimado total: <span className="total-highlight">${totalCost}</span>. 
+          ¿Deseas continuar?
+        </>
+      ),
+      confirmText: 'Confirmar',
+      cancelText: 'Cancelar',
+      type: 'warning'
+    });
+
+    if (!proceed) {
+      return;
+    }
 
     try {
       setIsSendingTemplate(true);
@@ -724,7 +745,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         />
         {showWhatsAppInfo && (
           <div className="whatsapp-info">
-            <p>📱<strong>Importante:</strong> Las plantillas requieren aprobación de WhatsApp y puede tomar de 24-48 horas.</p>
+            <p>📱<strong>Importante:</strong> El envio de plantillas tiene un costo aproximado de <strong>$100</strong> por mensaje entregado.</p>
             <button 
               className="close-info-btn"
               onClick={() => setShowWhatsAppInfo(false)}
