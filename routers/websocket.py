@@ -14,12 +14,12 @@ router = APIRouter(tags=["websocket"])
 # Mensajes constantes
 WELCOME_MESSAGE = (
     "¡Bienvenid@ a Agropecuaria Juradó S.A.S! 👋\n\n"
-    "Para poder ayudarte, por favor elige una de las siguientes opciones:\n\n"
-    "1. Números de contacto 📲\n"
-    "2. Mi comprobante de pago 🧾\n"
-    "3. Mi estado de ánimo 😊\n"
-    "4. Tratamiento de datos 📄\n"
-    "5. Cancelar mi suscripción ❌\n\n"
+    "Para poder ayudarte, por favor elige una de las siguientes opciones: 👇\n\n"
+    "*1.* 📲 Números de contacto\n\n"
+    "*2.* 🧾 Mi comprobante de pago\n\n"
+    "*3.* 😊 Mi estado de ánimo\n\n"
+    "*4.* 📄 Tratamiento de datos\n\n"
+    "*5.* ❌ Cancelar mi suscripción\n\n"
     "_💡 Responde con el número de la opción que necesitas._"
 )
 
@@ -70,7 +70,7 @@ async def process_message(message: str, user_name: str, user_phone_number: str, 
         "Para buscar tu comprobante de pago por favor, *ingresa tu número de cédula*\n"
         "_(solo números y sin espacio)_.\n\n"
         "Ejemplo: *1001234567*\n\n"
-        "💡 _Escribe *cancelar* en cualquier momento para volver al menú_"
+        "💡 _Escribe *cancelar* en cualquier momento para volver al menú principal_"
     )
     
     # Obtener el estado de conversación del usuario
@@ -108,7 +108,7 @@ async def process_message(message: str, user_name: str, user_phone_number: str, 
         '2': '2', 'pago': '2', 'comprobante': '2',
         '3': '3', 'animo': '3', 'ánimo': '3',
         '4': '4', 'datos': '4',
-        '5': '5', 'cancelar': '5', 'suscripcion': '5', 'suscripción': '5',
+        '5': '5', 'suscripcion': '5', 'suscripción': '5',
     }
 
     # Determinar la opción elegida
