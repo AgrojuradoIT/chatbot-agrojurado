@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db, get_db_sync
 from models.whatsapp_models import WebhookRequest, Message
 from utils.websocket_manager import manager
-from routers.websocket import process_message
+from services.bot_service import process_message, handle_webhook_message
 from config.settings import settings
 import asyncio
 
@@ -61,8 +61,6 @@ async def receive_webhook(request: Request):
                                     print(f"🔘 Botón presionado: ID='{message_text}', Título='{button_reply.get('title', '')}'")
                             
                             if message_text:  # Solo procesar si tenemos texto válido
-                                timestamp = message.get("timestamp")
-                                
                                 # Obtener información del contacto
                                 contacts = value.get("contacts", [])
                                 contact_name = "Usuario"
@@ -73,31 +71,25 @@ async def receive_webhook(request: Request):
                                 
                                 print(f"Mensaje recibido de {from_number} ({contact_name}): {message_text}")
                                 
-                                # Guardar mensaje del usuario en la base de datos
-                                user_message = Message(
-                                    id=message_id,  # Usar message_id como id
-                                    phone_number=from_number,
-                                    content=message_text,
-                                    sender="user"
-                                )
+                                # Usar la función de manejo de mensajes del webhook
+                                result = handle_webhook_message(message, db)
                                 
-                                db.add(user_message)
-                                db.commit()
-                                db.refresh(user_message)
-                                
-                                # Procesar mensaje y generar respuesta
-                                response_text = await process_message(message_text, contact_name, from_number, db)
-                                
-                                # La respuesta se envía automáticamente en process_message
-                                # También se guarda en la base de datos y se notifica por WebSocket
-                                
-                                # Notificar a los clientes WebSocket
-                                websocket_message = {
-                                    "type": "new_message",
-                                    "message": {
-                                        "id": str(user_message.id),
-                                        "phone_number": from_number,
-                                        "text": message_text,
+                                if result["success"]:
+                                    user_message = result["message"]
+                                    
+                                    # Procesar mensaje y generar respuesta
+                                    response_text = await process_message(message_text, contact_name, from_number, db)
+                                    
+                                    # La respuesta se envía automáticamente en process_message
+                                    # También se guarda en la base de datos y se notifica por WebSocket
+                                    
+                                    # Notificar a los clientes WebSocket
+                                    websocket_message = {
+                                        "type": "new_message",
+                                        "message": {
+                                            "id": str(user_message.id),
+                                            "phone_number": from_number,
+                                            "text": message_text,
                                         "sender": "user",
                                         "timestamp": user_message.timestamp.isoformat(),
                                         "contact_name": contact_name
