@@ -9,7 +9,6 @@ from models.whatsapp_models import WhatsappUser, Message
 from services.whatsapp_service import send_whatsapp_message, create_or_update_whatsapp_user
 from services.receipt_service import ReceiptService
 from services.validation_service import ValidationService
-from services.gemini_service import generate_gemini_response
 from typing import Tuple, Optional, Dict, Any
 from datetime import datetime
 import json
