@@ -466,7 +466,7 @@ function Dashboard() {
                 ESTADÍSTICAS
               </button>
             </ProtectedComponent>
-            <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} hideWhenNoAccess={true}>
+            <ProtectedComponent permissions={['chatbot.receipts.view', 'chatbot.receipts.manage']} hideWhenNoAccess={true}>
               <button 
                 className={`tab-btn ${activeTab === 'comprobantes' ? 'active' : ''}`}
                 onClick={() => setActiveTab('comprobantes')}
@@ -586,7 +586,7 @@ function Dashboard() {
                   ESTADÍSTICAS
                 </button>
               </ProtectedComponent>
-              <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} hideWhenNoAccess={true}>
+              <ProtectedComponent permissions={['chatbot.receipts.view', 'chatbot.receipts.manage']} hideWhenNoAccess={true}>
                 <button 
                   className={`mobile-tab-btn ${activeTab === 'comprobantes' ? 'active' : ''}`}
                   onClick={() => {
@@ -704,7 +704,7 @@ function Dashboard() {
           )}
           
           {activeTab === 'comprobantes' && (
-            <ProtectedComponent permissions={['chatbot.comprobantes.view', 'chatbot.comprobantes.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los comprobantes</div>}>
+            <ProtectedComponent permissions={['chatbot.receipts.view', 'chatbot.receipts.manage']} fallback={<div className="no-permission">No tienes permisos para acceder a los comprobantes</div>}>
               <ReceiptsPanel
                 onClose={() => setActiveTab('chat')}
               />

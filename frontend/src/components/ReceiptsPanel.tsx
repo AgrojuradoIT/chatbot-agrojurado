@@ -5,6 +5,9 @@ import SearchInput from './SearchInput';
 import { useReceiptOperation } from '../contexts/ReceiptOperationContext';
 import { websocketService } from '../services/websocketService';
 import type { WebSocketMessage } from '../services/websocketService';
+import { ProtectedComponent } from './ProtectedComponent';
+import { usePermissions } from '../hooks/usePermissions';
+import { getAuthHeaders } from '../utils/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -25,6 +28,7 @@ interface ReceiptsPanelProps {
 const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
   const { showNotification } = useNotifications();
   const { operationState, startRealTimeOperation, updateRealTimeProgress, completeRealTimeOperation } = useReceiptOperation();
+  const { hasPermission } = usePermissions();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +39,9 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Verificar si tiene permisos de gestión
+  const canManage = hasPermission('chatbot.receipts.manage');
 
   // Load receipts when component mounts
   useEffect(() => {
@@ -173,16 +180,16 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
         try {
           await fetch(`${API_BASE_URL}/api/receipts/clear-cache`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: getAuthHeaders(),
           });
         } catch (err) {
           console.warn('No se pudo limpiar el caché:', err);
         }
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/receipts/list`);
+      const response = await fetch(`${API_BASE_URL}/api/receipts/list`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) {
         throw new Error('Error loading receipts');
       }
@@ -238,9 +245,7 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
       // Procesar en lotes sin progreso simulado
       const response = await fetch(`${API_BASE_URL}/api/receipts/delete-batch`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ 
           ids: selectedReceipts,
           optimize: true 
@@ -350,9 +355,7 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
       // Procesar en lotes sin progreso simulado
           const response = await fetch(`${API_BASE_URL}/api/receipts/move`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ 
           ids: validReceipts, // Usar solo los archivos válidos
               target_folder: targetFolder 
@@ -462,6 +465,7 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
           
           const response = await fetch(`${API_BASE_URL}/api/receipts/upload-multiple`, {
             method: 'POST',
+            headers: getAuthHeaders({}, false), // false para no incluir Content-Type (FormData lo maneja)
             body: formData,
           });
           
@@ -627,13 +631,15 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
 
         {/* Acciones */}
         <div className="toolbar-actions">
-          <button 
-            className="action-button primary"
-            onClick={() => setShowUploadModal(true)}
-            disabled={operationState.isAnyOperationInProgress}
-          >
-            <span className="material-icons">cloud_upload</span>Subir {activeTab === 'recientes' ? 'Recientes' : 'Anteriores'}
-          </button>
+          <ProtectedComponent permissions={['chatbot.receipts.manage']} hideWhenNoAccess={true}>
+            <button 
+              className="action-button primary"
+              onClick={() => setShowUploadModal(true)}
+              disabled={operationState.isAnyOperationInProgress}
+            >
+              <span className="material-icons">cloud_upload</span>Subir {activeTab === 'recientes' ? 'Recientes' : 'Anteriores'}
+            </button>
+          </ProtectedComponent>
         </div>
 
         {/* Buscador */}
@@ -661,6 +667,7 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
             </span>
           </div>
           <div className="selection-buttons">
+            <ProtectedComponent permissions={['chatbot.receipts.manage']} hideWhenNoAccess={true}>
               <button 
                 className="action-button secondary"
                 onClick={() => setShowMoveModal(true)}
@@ -676,6 +683,8 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
                   </>
                 )}
               </button>
+            </ProtectedComponent>
+            <ProtectedComponent permissions={['chatbot.receipts.manage']} hideWhenNoAccess={true}>
               <button 
                 className="action-button danger"
                 onClick={() => setShowDeleteModal(true)}
@@ -691,6 +700,7 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
                   </>
                 )}
               </button>
+            </ProtectedComponent>
         </div>
         </div>
       )}
@@ -710,14 +720,16 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
         ) : (
           <div className="receipts-table">
             <div className="table-header">
-              <div className="table-cell checkbox">
-                <input 
-                  type="checkbox" 
-                  checked={selectedReceipts.length === getCurrentTabReceipts().length && getCurrentTabReceipts().length > 0}
-                  onChange={handleSelectAll}
-                            disabled={operationState.isAnyOperationInProgress}
-                />
-              </div>
+              {canManage && (
+                <div className="table-cell checkbox">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedReceipts.length === getCurrentTabReceipts().length && getCurrentTabReceipts().length > 0}
+                    onChange={handleSelectAll}
+                    disabled={operationState.isAnyOperationInProgress}
+                  />
+                </div>
+              )}
               <div className="table-cell">Archivo</div>
               <div className="table-cell">Cedula</div>
               <div className="table-cell">Fecha</div>
@@ -732,14 +744,16 @@ const ReceiptsPanel: React.FC<ReceiptsPanelProps> = () => {
             ) : (
               getCurrentTabReceipts().map((receipt) => (
                 <div key={receipt.id} className="table-row">
-                  <div className="table-cell checkbox">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedReceipts.includes(receipt.id)}
-                      onChange={() => handleSelectReceipt(receipt.id)}
-                                disabled={operationState.isAnyOperationInProgress}
-                    />
-                  </div>
+                  {canManage && (
+                    <div className="table-cell checkbox">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedReceipts.includes(receipt.id)}
+                        onChange={() => handleSelectReceipt(receipt.id)}
+                        disabled={operationState.isAnyOperationInProgress}
+                      />
+                    </div>
+                  )}
                   <div className="table-cell">
                     <div className="file-info">
                       <span className="material-icons file-icon">description</span>

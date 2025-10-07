@@ -12,6 +12,8 @@ from database import get_db
 from services.ftp_service import *
 from services.ftp_service import _format_file_size
 from services.validation_service import ValidationService
+from middleware.auth import get_current_user
+from middleware.permissions import require_permission, require_any_permission
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from utils.websocket_manager import manager
@@ -20,7 +22,10 @@ from utils.websocket_manager import manager
 router = APIRouter(prefix="/api/receipts", tags=["receipts"])
 
 @router.get("/list")
-async def list_receipts(db: Session = Depends(get_db)):
+async def list_receipts(
+    current_user: dict = Depends(require_any_permission(["chatbot.receipts.view", "chatbot.receipts.manage"])),
+    db: Session = Depends(get_db)
+):
     """
     Lista todos los comprobantes disponibles en ambas carpetas con metadatos reales
     """
@@ -84,6 +89,7 @@ async def list_receipts(db: Session = Depends(get_db)):
 
 @router.post("/upload-multiple")
 async def upload_multiple_receipts(
+    current_user: dict = Depends(require_permission("chatbot.receipts.manage")),
     files: List[UploadFile] = File(...),
     folder: str = Form(default="recientes"),
     db: Session = Depends(get_db)
@@ -274,6 +280,7 @@ async def upload_multiple_receipts(
 @router.delete("/delete-batch")
 async def delete_receipts_batch(
     request: Request,
+    current_user: dict = Depends(require_permission("chatbot.receipts.manage")),
     db: Session = Depends(get_db)
 ):
     """
@@ -424,6 +431,7 @@ async def delete_receipts_batch(
 @router.post("/move")
 async def move_receipts(
     request: Request,
+    current_user: dict = Depends(require_permission("chatbot.receipts.manage")),
     db: Session = Depends(get_db)
 ):
     """
@@ -584,6 +592,7 @@ async def move_receipts(
 @router.get("/download/{receipt_id}")
 async def download_receipt(
     receipt_id: str,
+    current_user: dict = Depends(require_any_permission(["chatbot.receipts.view", "chatbot.receipts.manage"])),
     db: Session = Depends(get_db)
 ):
     """
@@ -641,6 +650,7 @@ async def download_receipt(
 
 @router.post("/clear-cache")
 async def clear_receipts_cache(
+    current_user: dict = Depends(require_permission("chatbot.receipts.manage")),
     subdir: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
