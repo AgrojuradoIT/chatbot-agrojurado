@@ -29,7 +29,6 @@ async def receive_webhook(request: Request):
     db = None
     try:
         body = await request.json()
-        print(f"Webhook recibido: {body}")
         
         # Obtener conexión a la base de datos
         db = get_db_sync()
@@ -57,8 +56,7 @@ async def receive_webhook(request: Request):
                                 interactive_data = message.get("interactive", {})
                                 if interactive_data.get("type") == "button_reply":
                                     button_reply = interactive_data.get("button_reply", {})
-                                    message_text = button_reply.get("id", "")  # El ID del botón presionado
-                                    print(f"🔘 Botón presionado: ID='{message_text}', Título='{button_reply.get('title', '')}'")
+                                    message_text = button_reply.get("id", "")
                             
                             if message_text:  # Solo procesar si tenemos texto válido
                                 # Obtener información del contacto
@@ -69,8 +67,6 @@ async def receive_webhook(request: Request):
                                         contact_name = contact.get("profile", {}).get("name", "Usuario")
                                         break
                                 
-                                print(f"Mensaje recibido de {from_number} ({contact_name}): {message_text}")
-                                
                                 # Usar la función de manejo de mensajes del webhook
                                 result = handle_webhook_message(message, db)
                                 
@@ -80,9 +76,6 @@ async def receive_webhook(request: Request):
                                     # Procesar mensaje y generar respuesta
                                     response_text = await process_message(message_text, contact_name, from_number, db)
                                     
-                                    # La respuesta se envía automáticamente en process_message
-                                    # También se guarda en la base de datos y se notifica por WebSocket
-                                    
                                     # Notificar a los clientes WebSocket
                                     websocket_message = {
                                         "type": "new_message",
@@ -90,28 +83,24 @@ async def receive_webhook(request: Request):
                                             "id": str(user_message.id),
                                             "phone_number": from_number,
                                             "text": message_text,
-                                        "sender": "user",
-                                        "timestamp": user_message.timestamp.isoformat(),
-                                        "contact_name": contact_name
+                                            "sender": "user",
+                                            "timestamp": user_message.timestamp.isoformat(),
+                                            "contact_name": contact_name
+                                        }
                                     }
-                                }
-                                
-                                # Enviar a conexiones específicas del número
-                                await manager.send_message_to_phone(from_number, websocket_message)
-                                
-                                # Enviar a conexiones generales
-                                await manager.send_message_to_all(websocket_message)
-                            else:
-                                print(f"⚠️ Tipo de mensaje no soportado: {message_type}")
-                        
+                                    
+                                    # Enviar a conexiones específicas del número
+                                    await manager.send_message_to_phone(from_number, websocket_message)
+                                    
+                                    # Enviar a conexiones generales
+                                    await manager.send_message_to_all(websocket_message)
+                            
                         # Procesar estados de mensajes
                         for status in value.get("statuses", []):
                             message_id = status.get("id")
                             recipient_id = status.get("recipient_id")
                             status_value = status.get("status")
                             timestamp = status.get("timestamp")
-                            
-                            print(f"Estado de mensaje {message_id} para {recipient_id}: {status_value}")
                             
                             # Actualizar estado del mensaje en la base de datos si es necesario
                             message = db.query(Message).filter(Message.id == message_id).first()
@@ -136,7 +125,6 @@ async def receive_webhook(request: Request):
         return {"status": "ok"}
         
     except Exception as e:
-        print(f"Error processing webhook: {str(e)}")
         return {"status": "error", "message": str(e)}
     finally:
         if db:

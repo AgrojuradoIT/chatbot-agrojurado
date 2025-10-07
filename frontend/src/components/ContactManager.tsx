@@ -3,6 +3,7 @@ import { contactService } from '../services/contactService';
 import type { Contact, ContactCreateRequest, ContactTypeEnum } from '../services/contactService';
 import ContactImport from './ContactImport';
 import SearchInput from './SearchInput';
+import LoadingButton from './LoadingButton';
 import '../styles/ContactImport.css';
 import '../styles/ContactManager.css';
 import '../styles/SearchInput.css';
@@ -29,6 +30,8 @@ const ContactManager: React.FC<ContactManagerProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [newContact, setNewContact] = useState<ContactCreateRequest>({
     phone_number: '',
     name: '',
@@ -98,6 +101,7 @@ const ContactManager: React.FC<ContactManagerProps> = ({
       return;
     }
 
+    setIsCreating(true);
     try {
       await contactService.createContact({
         ...newContact,
@@ -120,12 +124,15 @@ const ContactManager: React.FC<ContactManagerProps> = ({
         title: 'Error al Crear Contacto',
         message: err.message || 'Error al crear el contacto'
       });
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleUpdateContact = async () => {
     if (!editingContact) return;
 
+    setIsUpdating(true);
     try {
       await contactService.updateContact(editingContact.phone_number, {
         name: editingContact.name,
@@ -148,6 +155,8 @@ const ContactManager: React.FC<ContactManagerProps> = ({
         title: 'Error al Actualizar Contacto',
         message: err.message || 'Error al actualizar el contacto'
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -353,8 +362,12 @@ const ContactManager: React.FC<ContactManagerProps> = ({
               </select>
             </div>
             <div className="modal-actions">
-              <button onClick={handleCreateContact}>Crear</button>
-              <button onClick={() => setShowCreateModal(false)}>Cancelar</button>
+              <LoadingButton onClick={handleCreateContact} loading={isCreating}>
+                Crear
+              </LoadingButton>
+              <button onClick={() => setShowCreateModal(false)} disabled={isCreating}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
@@ -408,8 +421,12 @@ const ContactManager: React.FC<ContactManagerProps> = ({
               </label>
             </div>
             <div className="modal-actions">
-              <button onClick={handleUpdateContact}>Actualizar</button>
-              <button onClick={() => setShowEditModal(false)}>Cancelar</button>
+              <LoadingButton onClick={handleUpdateContact} loading={isUpdating}>
+                Actualizar
+              </LoadingButton>
+              <button onClick={() => setShowEditModal(false)} disabled={isUpdating}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

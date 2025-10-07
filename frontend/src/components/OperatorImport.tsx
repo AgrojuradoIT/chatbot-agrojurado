@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { operatorService } from '../services/operatorService';
 import type { OperatorCreateRequest } from '../services/operatorService';
 import Loader from './Loader';
+import LoadingButton from './LoadingButton';
 import { useNotifications } from './NotificationContainer';
 
 interface ImportResult {
@@ -74,13 +75,30 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
       // Intentar parsear diferentes formatos de fecha
       let dateObj: Date;
       
-      if (expeditionDate.includes('/')) {
-        // Formato DD/MM/YYYY
-        const [day, month, year] = expeditionDate.split('/');
-        dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } else if (expeditionDate.includes('-')) {
-        // Formato YYYY-MM-DD
-        dateObj = new Date(expeditionDate);
+      // Si expeditionDate es un objeto Date de Excel
+      if (expeditionDate instanceof Date) {
+        dateObj = expeditionDate;
+      }
+      // Si es un número (serial de fecha de Excel)
+      else if (typeof expeditionDate === 'number') {
+        // Convertir número de Excel a fecha (Excel cuenta desde 1900-01-01)
+        const excelEpoch = new Date(1899, 11, 30); // Excel epoch
+        dateObj = new Date(excelEpoch.getTime() + expeditionDate * 86400000);
+      }
+      // Si es un string
+      else if (typeof expeditionDate === 'string') {
+        const dateStr = expeditionDate.trim();
+        
+        if (dateStr.includes('/')) {
+          // Formato DD/MM/YYYY
+          const [day, month, year] = dateStr.split('/');
+          dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else if (dateStr.includes('-')) {
+          // Formato YYYY-MM-DD
+          dateObj = new Date(dateStr);
+        } else {
+          throw new Error('Formato de fecha no reconocido');
+        }
       } else {
         throw new Error('Formato de fecha no reconocido');
       }
@@ -394,17 +412,19 @@ const OperatorImport: React.FC<OperatorImportProps> = ({ onImportComplete, onClo
               </div>
               
               <div className="preview-actions">
-                <button 
-                  className="confirm-btn"
+                <LoadingButton
                   onClick={confirmImport}
                   disabled={operatorPreview.filter(p => p.status === 'valid').length === 0}
+                  loading={isImporting}
+                  className="confirm-btn"
                 >
                   <span className="material-icons">cloud_upload</span>
                   Importar Empleados
-                </button>
+                </LoadingButton>
                 <button 
                   className="cancel-btn"
                   onClick={() => setShowPreview(false)}
+                  disabled={isImporting}
                 >
                   <span className="material-icons">close</span>
                   Cancelar

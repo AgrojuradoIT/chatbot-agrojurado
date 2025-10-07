@@ -3,6 +3,7 @@ import { operatorService } from '../services/operatorService';
 import type { Operator, OperatorCreateRequest } from '../services/operatorService';
 import OperatorImport from './OperatorImport';
 import SearchInput from './SearchInput';
+import LoadingButton from './LoadingButton';
 import '../styles/ContactImport.css';
 import '../styles/ContactManager.css';
 import '../styles/SearchInput.css';
@@ -27,6 +28,8 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [newOperator, setNewOperator] = useState<OperatorCreateRequest>({
     cedula: '',
     name: '',
@@ -72,6 +75,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
       return;
     }
 
+    setIsCreating(true);
     try {
       await operatorService.createOperator({
         ...newOperator,
@@ -96,12 +100,15 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
         title: 'Error al Crear Empleado',
         message: err.message || 'Error al crear el empleado'
       });
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleUpdateOperator = async () => {
     if (!editingOperator) return;
 
+    setIsUpdating(true);
     try {
       await operatorService.updateOperator(editingOperator.cedula, {
         name: editingOperator.name,
@@ -125,6 +132,8 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
         title: 'Error al Actualizar Empleado',
         message: err.message || 'Error al actualizar el empleado'
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -308,8 +317,12 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
               />
             </div>
             <div className="modal-actions">
-              <button onClick={handleCreateOperator}>Crear</button>
-              <button onClick={() => setShowCreateModal(false)}>Cancelar</button>
+              <LoadingButton onClick={handleCreateOperator} loading={isCreating}>
+                Crear
+              </LoadingButton>
+              <button onClick={() => setShowCreateModal(false)} disabled={isCreating}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
@@ -360,8 +373,12 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({
               </label>
             </div>
             <div className="modal-actions">
-              <button onClick={handleUpdateOperator}>Actualizar</button>
-              <button onClick={() => setShowEditModal(false)}>Cancelar</button>
+              <LoadingButton onClick={handleUpdateOperator} loading={isUpdating}>
+                Actualizar
+              </LoadingButton>
+              <button onClick={() => setShowEditModal(false)} disabled={isUpdating}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

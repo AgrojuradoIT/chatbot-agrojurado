@@ -286,10 +286,10 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
 
   // Autocompletar el campo footer con el sector del usuario cuando esté disponible
   useEffect(() => {
-    if (user && user.sector && showCreateModal) {
+    if (user && user.name && user.sector && showCreateModal) {
       setNewTemplate(prev => ({
         ...prev,
-        footer: user.sector
+        footer: `${user.name} - ${user.sector}`
       }));
     }
   }, [user, showCreateModal]);
