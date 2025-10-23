@@ -25,6 +25,12 @@ async def oauth_callback(request: OAuthCallbackRequest):
         if not user_info:
             raise HTTPException(status_code=400, detail="Error obteniendo información del usuario")
         
+        # Validar que la información del usuario tenga los campos requeridos
+        required_fields = ['id', 'name', 'email', 'sector']
+        for field in required_fields:
+            if not user_info.get(field):
+                raise HTTPException(status_code=400, detail=f"Información del usuario incompleta: falta {field}")
+        
         # Crear JWT interno
         jwt_token = await auth_service.create_jwt_token(user_info, access_token)
         
