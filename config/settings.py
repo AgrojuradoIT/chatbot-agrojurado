@@ -53,6 +53,7 @@ class Settings:
         "http://localhost:8000",  # Backend URL desarrollo
         "https://www.agrojurado.com",  # Tu dominio con www
         "https://chatbot.agrojurado.com",  # Tu dominio de producción
+        "https://chatbot.agrojurado.com/",  # Con slash
         "https://chatbot-agrojurado.onrender.com",  # URL de Render.com
     ]
     
@@ -61,7 +62,9 @@ class Settings:
         if not self.WHATSAPP_VERIFY_TOKEN:
             print("WARNING: WHATSAPP_VERIFY_TOKEN no está configurado")
         if not self.JWT_SECRET_KEY:
-            print("WARNING: JWT_SECRET_KEY no está configurado")
+            raise ValueError("JWT_SECRET_KEY es requerido")
+        if not self.OAUTH_CLIENT_ID or not self.OAUTH_CLIENT_SECRET or not self.OAUTH_REDIRECT_URI or not self.OAUTH_TOKEN_URL or not self.OAUTH_USER_URL:
+            raise ValueError("Variables de OAuth requeridas no están configuradas")
 
 # Instancia global de configuración
 settings = Settings()

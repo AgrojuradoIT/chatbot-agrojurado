@@ -30,13 +30,7 @@ class AuthService:
                 'code': code,
             }
             
-            # Añadir encabezados específicos para evitar error 415
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-            }
-            
-            response = requests.post(self.token_url, data=data, headers=headers)
+            response = requests.post(self.token_url, data=data)
             
             if response.status_code == 200:
                 token_data = response.json()
