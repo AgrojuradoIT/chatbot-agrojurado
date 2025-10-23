@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class OAuthCallbackRequest(BaseModel):
     """Modelo para el request del callback OAuth"""
@@ -15,6 +15,6 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    sector: str
+    sector: Optional[str] = None
     roles: List[str]
     permissions: List[str]
