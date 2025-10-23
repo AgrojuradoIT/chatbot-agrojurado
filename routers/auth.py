@@ -15,6 +15,7 @@ async def oauth_callback(request: OAuthCallbackRequest):
         token_data = await auth_service.exchange_code_for_token(request.code)
         
         if not token_data:
+            print(f"Error: exchange_code_for_token returned None")
             raise HTTPException(status_code=400, detail="Error intercambiando código por token")
         
         access_token = token_data.get('access_token')
@@ -23,18 +24,21 @@ async def oauth_callback(request: OAuthCallbackRequest):
         user_info = await auth_service.get_user_info(access_token)
         
         if not user_info:
+            print(f"Error: get_user_info returned None for access_token: {access_token[:10]}...")
             raise HTTPException(status_code=400, detail="Error obteniendo información del usuario")
         
         # Validar que la información del usuario tenga los campos requeridos
         required_fields = ['id', 'name', 'email']
         for field in required_fields:
             if not user_info.get(field):
+                print(f"Error: user_info missing field {field}: {user_info}")
                 raise HTTPException(status_code=400, detail=f"Información del usuario incompleta: falta {field}")
         
         # Crear JWT interno
         jwt_token = await auth_service.create_jwt_token(user_info, access_token)
         
         if not jwt_token:
+            print(f"Error: create_jwt_token returned None")
             raise HTTPException(status_code=500, detail="Error creando token interno")
         
         return AuthResponse(
