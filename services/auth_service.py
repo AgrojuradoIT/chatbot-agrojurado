@@ -30,7 +30,12 @@ class AuthService:
                 'code': code,
             }
             
-            response = requests.post(self.token_url, data=data)
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            }
+            
+            response = requests.post(self.token_url, headers=headers, json=data)
             
             if response.status_code == 200:
                 token_data = response.json()
