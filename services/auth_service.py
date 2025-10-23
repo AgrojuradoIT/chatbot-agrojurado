@@ -57,6 +57,12 @@ class AuthService:
                 'Accept': 'application/json',
             }
             
+            # Log para obtener la IP que está haciendo la petición
+            print(f"Realizando petición a {self.user_url} con IP de origen")
+            ip_check_response = requests.get('https://api.ipify.org?format=json')
+            if ip_check_response.status_code == 200:
+                print(f"IP de origen: {ip_check_response.json().get('ip')}")
+            
             response = requests.get(self.user_url, headers=headers)
             
             if response.status_code == 200:
