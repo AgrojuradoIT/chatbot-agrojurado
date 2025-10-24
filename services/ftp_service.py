@@ -74,15 +74,30 @@ def ftp_connection():
     if not _validate_ftp_credentials():
         raise ConnectionError("Faltan credenciales FTP requeridas")
     
-    ftp = FTP(FTP_HOST)
+    ftp = None
     try:
+        ftp = FTP(timeout=30)  # Timeout de 30 segundos
+        ftp.connect(FTP_HOST, 21)  # Puerto FTP estándar
         ftp.login(FTP_USER, FTP_PASSWORD)
         yield ftp
+    except OSError as e:
+        if "Network is unreachable" in str(e):
+            raise ConnectionError(f"No se puede alcanzar el servidor FTP {FTP_HOST}. Verifique la configuración de DNS/red.")
+        elif "Connection refused" in str(e):
+            raise ConnectionError(f"Conexión rechazada por el servidor FTP {FTP_HOST}. Verifique que el servicio FTP esté funcionando.")
+        else:
+            raise ConnectionError(f"Error de red conectando a FTP: {e}")
+    except Exception as e:
+        raise ConnectionError(f"Error conectando a FTP: {e}")
     finally:
-        try:
-            ftp.quit()
-        except Exception:
-            pass
+        if ftp:
+            try:
+                ftp.quit()
+            except Exception:
+                try:
+                    ftp.close()
+                except Exception:
+                    pass
 
 
 def _ensure_dirs(ftp: FTP, remote_dir: str) -> None:
@@ -521,7 +536,16 @@ def _get_files_with_metadata(subdir: str, use_cache: bool = True) -> List[dict]:
             return files_with_metadata
             
     except Exception as e:
-        print(f"Error obteniendo metadatos de archivos en {subdir}: {e}")
+        error_msg = f"Error obteniendo metadatos de archivos en {subdir}: {e}"
+        print(error_msg)
+        
+        # Si es un error de red, devolver una lista vacía en lugar de propagar el error
+        if "Network is unreachable" in str(e) or "Connection refused" in str(e) or isinstance(e, ConnectionError):
+            print(f"⚠️ FTP no disponible para {subdir}. Devolviendo lista vacía.")
+            return []
+        
+        # Para otros errores, también devolver lista vacía pero registrar más detalle
+        print(f"⚠️ Error inesperado en FTP para {subdir}: {type(e).__name__}: {e}")
         return []
 
 

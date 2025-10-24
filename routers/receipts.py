@@ -10,7 +10,7 @@ import tempfile
 from datetime import datetime
 from database import get_db
 from services.ftp_service import *
-from services.ftp_service import _format_file_size
+from services.ftp_service import _format_file_size, _validate_ftp_credentials
 from services.validation_service import ValidationService
 from middleware.auth import get_current_user
 from middleware.permissions import require_permission, require_any_permission
@@ -31,6 +31,7 @@ async def list_receipts(
     """
     try:
         receipts = []
+        ftp_available = True
         
         # Listar archivos en la carpeta 'recientes' con metadatos reales
         try:
@@ -52,6 +53,8 @@ async def list_receipts(
                 receipts.append(receipt)
         except Exception as e:
             print(f"Error listando archivos recientes: {e}")
+            if "Network is unreachable" in str(e) or "Connection refused" in str(e):
+                ftp_available = False
         
         # Listar archivos en la carpeta 'anteriores' con metadatos reales
         try:
@@ -73,6 +76,8 @@ async def list_receipts(
                 receipts.append(receipt)
         except Exception as e:
             print(f"Error listando archivos anteriores: {e}")
+            if "Network is unreachable" in str(e) or "Connection refused" in str(e):
+                ftp_available = False
         
         # Sort by date (most recent first)
         receipts.sort(key=lambda x: x["fecha"], reverse=True)
@@ -80,11 +85,78 @@ async def list_receipts(
         return {
             "success": True,
             "receipts": receipts,
-            "total": len(receipts)
+            "total": len(receipts),
+            "ftp_available": ftp_available,
+            "message": "Servicio FTP no disponible. Mostrando datos en caché." if not ftp_available else None
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al listar comprobantes: {str(e)}")
+
+
+@router.get("/ftp-status")
+async def check_ftp_status(
+    current_user: dict = Depends(require_any_permission(["chatbot.receipts.view", "chatbot.receipts.manage"]))
+):
+    """
+    Verifica el estado de la conexión FTP y diagnóstica problemas de conectividad
+    """
+    import socket
+    import time
+    
+    status = {
+        "ftp_configured": False,
+        "hostname_resolves": False,
+        "port_reachable": False,
+        "ftp_login_works": False,
+        "error_details": [],
+        "resolved_ip": None,
+        "ftp_host": FTP_HOST
+    }
+    
+    try:
+        # Verificar configuración
+        if not _validate_ftp_credentials():
+            status["error_details"].append("Credenciales FTP no configuradas")
+            return status
+        status["ftp_configured"] = True
+        
+        # Verificar resolución DNS
+        try:
+            resolved_ip = socket.gethostbyname(FTP_HOST)
+            status["hostname_resolves"] = True
+            status["resolved_ip"] = resolved_ip
+        except socket.gaierror as e:
+            status["error_details"].append(f"No se puede resolver hostname {FTP_HOST}: {e}")
+            return status
+        
+        # Verificar conectividad de puerto
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(10)
+            result = sock.connect_ex((FTP_HOST, 21))
+            sock.close()
+            
+            if result == 0:
+                status["port_reachable"] = True
+            else:
+                status["error_details"].append(f"Puerto 21 no alcanzable en {FTP_HOST} (IP: {resolved_ip})")
+                return status
+        except Exception as e:
+            status["error_details"].append(f"Error probando conectividad: {e}")
+            return status
+        
+        # Verificar login FTP
+        try:
+            with ftp_connection() as ftp:
+                status["ftp_login_works"] = True
+        except Exception as e:
+            status["error_details"].append(f"Error en login FTP: {e}")
+    
+    except Exception as e:
+        status["error_details"].append(f"Error general: {e}")
+    
+    return status
 
 
 @router.post("/upload-multiple")
