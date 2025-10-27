@@ -247,45 +247,6 @@ async def delete_template(
         print(f"Error al eliminar plantilla: {e}")
         raise HTTPException(status_code=500, detail=f"Error al eliminar plantilla: {e}")
 
-@router.post("/with-media")
-async def create_template_with_media(
-    name: str,
-    content: str,
-    category: str,
-    footer: str = None,
-    media_type: str = "image",
-    file: UploadFile = File(...),
-    current_user: dict = Depends(require_permission("chatbot.templates.create"))
-):
-    """Crea una plantilla con archivo multimedia"""
-    try:
-        # Leer el archivo
-        file_content = await file.read()
-        
-        # Convertir a base64
-        file_base64 = base64.b64encode(file_content).decode('utf-8')
-        
-        # Crear plantilla con media
-        result = create_template_with_base64_media(
-            name=name,
-            content=content,
-            category=category,
-            footer=footer,
-            media_type=media_type,
-            file_base64=file_base64,
-            filename=file.filename
-        )
-        
-        if result and result.get('id'):
-            return {"message": "Plantilla con media creada exitosamente", "template_id": result['id']}
-        else:
-            raise HTTPException(status_code=400, detail="Error creando plantilla con media")
-            
-    except Exception as e:
-        print(f"Error al crear plantilla con media: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al crear plantilla con media: {e}")
-
-
 @router.post("/{template_id}/archive")
 async def archive_template(
     template_id: str, 
@@ -775,14 +736,3 @@ async def create_template_with_media(
     except Exception as e:
         print(f"Error creating template with media: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating template with media: {e}")
-
-
-@router.post("/send-with-media")
-async def send_template_with_media(
-    request: SendTemplateWithMediaRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-    _: dict = Depends(require_permission("chatbot.messages.send.massive"))
-):
-    """Endpoint específico para envío de plantillas con multimedia"""
-    return await send_template_with_media_to_contacts(request, db, current_user, _)
